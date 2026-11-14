@@ -1,0 +1,70 @@
+name: iOS Input Probe (unsigned IPA)
+
+# Builds tools/probes/ios-input-probe on a GitHub-hosted macOS runner.
+# Output: an UNSIGNED .ipa artifact. It must be signed before it can be
+# installed (TestFlight with a paid Apple Developer account, or a re-signing
+# tool with a free Apple ID). See BUILD_INSTRUCTIONS.md.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/probes/ios-input-probe/**"
+      - ".github/workflows/ios-input-probe.yml"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tools/probes/ios-input-probe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest installed Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build (no code signing)
+        run: |
+          xcodebuild \
+            -project MasarInputProbe.xcodeproj \
+            -scheme MasarInputProbe \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Build/Products/Release-iphoneos/MasarInputProbe.app
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/MasarInputProbe.app out/Payload/
+          (cd out && zip -qry MasarInputProbe-unsigned.ipa Payload)
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MasarInputProbe-unsigned-ipa
+          path: tools/probes/ios-input-probe/out/MasarInputProbe-unsigned.ipa
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: tools/probes/ios-input-probe/build.log
+          retention-days: 7

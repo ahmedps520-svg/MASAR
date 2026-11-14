@@ -1,0 +1,61 @@
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vs/
+.vscode/
+.idea/
+
+# ---- Unity (game/ project) ----
+game/[Ll]ibrary/
+game/[Tt]emp/
+game/[Oo]bj/
+game/[Bb]uild/
+game/[Bb]uilds/
+game/[Ll]ogs/
+game/[Uu]ser[Ss]ettings/
+game/[Mm]emoryCaptures/
+game/[Rr]ecordings/
+game/*.csproj
+game/*.sln
+game/*.slnx
+game/*.user
+game/*.pidb
+game/*.booproj
+game/*.unityproj
+game/sysinfo.txt
+game/*.apk
+game/*.aab
+game/*.unitypackage
+game/crashlytics-build.properties
+game/Assets/StreamingAssets/aa/
+game/Assets/StreamingAssets/aa.meta
+
+# ---- Build outputs ----
+build/
+builds/
+*.ipa
+*.xcarchive
+DerivedData/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+
+# ---- Node ----
+node_modules/
+
+# ---- Blender autosaves ----
+*.blend1
+*.blend2
+
+# ---- Secrets: never commit signing material ----
+*.p12
+*.mobileprovision
+*.p8
+*.cer
+*.key
+*.pem
+secrets/
