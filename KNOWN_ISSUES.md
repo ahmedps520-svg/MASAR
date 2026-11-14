@@ -38,7 +38,10 @@ Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school
 | T4 | Tire relaxation at very low speed uses a speed floor (0.6 m/s) | Prevents jitter, but slightly softens parking-speed response. Revisit in Month 2 |
 | T5 | Glass is transparent (sorted). Cabin glass is visible from inside, but the interior has no reflections | Acceptable for Phase 0 |
 | T6 | "Visible renderers" in the overlay counts `Renderer.isVisible` | Includes objects rendered only for shadows (Unity's definition) |
-| T7 | Generated meshes and scenes depend on running the builders | After a fresh clone, run **MASAR → Setup → Configure Project** and **MASAR → Build → Test Block Scene** (or the command-line method). Generated assets may be committed for convenience; the builders are the source of truth |
+| T7 | Generated meshes, scenes, prefab and materials are not in git (about 132 MB per regeneration) | After a fresh clone, run **MASAR → Setup → Configure Project** and **MASAR → Build → Test Block Scene**, or `-executeMethod Masar.EditorTools.MasarProjectSetup.ConfigureAndBuildScenes`. The builders are the source of truth |
+| T8 | Idle settles at about 693 rpm instead of the 750 target | The idle governor's throttle authority is slightly low. Tuning item for Month 2 |
+| T9 | Test-car cockpit is crude | Very dark untextured dashboard, a boxy rear-view mirror, the gauge cluster is an emissive panel (no working needles). Phase 0 placeholder (P1) |
+| T10 | Review screenshots are edit-mode renders | `MasarScreenshots` renders the scene at rest. The PlayMode drive test and the player smoke test cover motion |
 
 ## Licensing and legal
 

@@ -187,7 +187,6 @@ namespace Masar.EditorTools
             Set(so, "m_AdditionalLightsPerObjectLimit", Mathf.Min(8, t.AdditionalLights));
             Set(so, "m_AdditionalLightsRenderingMode", 1); // per pixel
             Set(so, "m_AdditionalLightShadowsSupported", false);
-            Set(so, "m_SupportsCameraDepthTexture", true);
             Set(so, "m_RequireDepthTexture", true);
             Set(so, "m_UseSRPBatcher", true);
             Set(so, "m_GPUResidentDrawerMode", t.GpuResidentDrawer ? 1 : 0);

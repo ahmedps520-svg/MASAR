@@ -136,7 +136,8 @@ namespace Masar.EditorTools
 
         private static void BuildGround(MeshBatch b, CityMaterials m)
         {
-            b[m.Ground].FloorRect(-Extent - 40f, -220f, Extent + 40f, 120f, -0.02f, 6f);
+            // Large ground plane so the horizon is ground + haze, never the sky's lower hemisphere
+            b[m.Ground].FloorRect(-2500f, -2500f, 2500f, 2500f, -0.02f, 6f);
         }
 
         private static void BuildRoads(MeshBatch b, CityMaterials m)
@@ -573,10 +574,10 @@ namespace Masar.EditorTools
             var sky = new Material(Shader.Find("Skybox/Procedural"));
             sky.SetFloat("_SunSize", 0.035f);
             sky.SetFloat("_SunSizeConvergence", 6f);
-            sky.SetFloat("_AtmosphereThickness", 1.35f);
-            sky.SetColor("_SkyTint", new Color(0.52f, 0.58f, 0.68f));
-            sky.SetColor("_GroundColor", new Color(0.62f, 0.56f, 0.48f));
-            sky.SetFloat("_Exposure", 1.25f);
+            sky.SetFloat("_AtmosphereThickness", 1.05f);
+            sky.SetColor("_SkyTint", new Color(0.50f, 0.56f, 0.66f));
+            sky.SetColor("_GroundColor", new Color(0.66f, 0.62f, 0.56f));
+            sky.SetFloat("_Exposure", 1.2f);
             AssetDatabase.CreateAsset(sky, $"{MaterialLibrary.MatRoot}/Sky_JeddahAfternoon.mat");
             RenderSettings.skybox = sky;
             RenderSettings.ambientMode = AmbientMode.Skybox;
@@ -585,8 +586,8 @@ namespace Masar.EditorTools
             RenderSettings.reflectionIntensity = 1.0f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.0021f;
-            RenderSettings.fogColor = new Color(0.80f, 0.76f, 0.69f);
+            RenderSettings.fogDensity = 0.0018f;
+            RenderSettings.fogColor = new Color(0.78f, 0.77f, 0.74f);
 
             // Reflection probes along the avenue and over the block
             int i = 0;

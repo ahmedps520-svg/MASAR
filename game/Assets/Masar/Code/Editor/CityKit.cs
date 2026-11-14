@@ -28,8 +28,10 @@ namespace Masar.EditorTools
                 PaintWhite = MaterialLibrary.Solid("City_RoadPaintWhite", new Color(0.86f, 0.86f, 0.84f), 0.45f),
                 PaintYellow = MaterialLibrary.Solid("City_RoadPaintYellow", new Color(0.88f, 0.68f, 0.12f), 0.45f),
                 Stone = MaterialLibrary.Scanned("City_StoneCladding", "Concrete034", new Color(0.93f, 0.85f, 0.72f), 0.7f),
-                WindowGlass = MaterialLibrary.Solid("City_WindowGlass", new Color(0.10f, 0.13f, 0.15f), 0.94f, 0.0f),
-                ShopGlass = MaterialLibrary.Solid("City_ShopGlass", new Color(0.12f, 0.15f, 0.16f), 0.96f, 0.0f),
+                // Slightly metallic so facades pick up sky and street reflections from the probes
+                // (dielectric glass at 4% reflectance read as black holes in the first review renders)
+                WindowGlass = MaterialLibrary.Solid("City_WindowGlass", new Color(0.30f, 0.38f, 0.44f), 0.92f, 0.55f),
+                ShopGlass = MaterialLibrary.Solid("City_ShopGlass", new Color(0.22f, 0.27f, 0.30f), 0.94f, 0.45f),
                 Frame = MaterialLibrary.Solid("City_FrameDark", new Color(0.16f, 0.16f, 0.17f), 0.55f, 0.6f),
                 FrameWhite = MaterialLibrary.Solid("City_FrameWhite", new Color(0.86f, 0.86f, 0.84f), 0.5f, 0.2f),
                 Metal = MaterialLibrary.Solid("City_RailingMetal", new Color(0.18f, 0.18f, 0.19f), 0.5f, 0.7f),

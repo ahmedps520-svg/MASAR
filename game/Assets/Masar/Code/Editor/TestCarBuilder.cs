@@ -71,8 +71,11 @@ namespace Masar.EditorTools
             BuildLowerBody(mb);
             Save(mb, bodyGo, "Sedan_BodyPaint", paint);
 
-            mb.Clear(); BuildGreenhouse(mb, out var pillars);
+            // Glass in two tints: lighter windshield and front side windows, darker rear (typical in KSA)
+            var glassRear = MaterialLibrary.Glass("Car_Glass_Rear", new Color(0.02f, 0.03f, 0.035f, 0.82f));
+            mb.Clear(); BuildGreenhouse(mb, out var pillars, out var rearGlass);
             Save(mb, bodyGo, "Sedan_Glass", glass);
+            Save(rearGlass, bodyGo, "Sedan_GlassRear", glassRear);
             Save(pillars, bodyGo, "Sedan_Pillars", paint);
 
             mb.Clear(); BuildTrim(mb);
@@ -308,30 +311,34 @@ namespace Masar.EditorTools
             return y;
         }
 
-        private static void BuildGreenhouse(MeshBuilder glass, out MeshBuilder pillars)
+        private static void BuildGreenhouse(MeshBuilder glass, out MeshBuilder pillars, out MeshBuilder rearGlass)
         {
             pillars = new MeshBuilder();
-            const int rows = 30, pts = 13;
-            var rings = new List<Vector3[]>();
-            const float z0 = -1.30f, z1 = 1.22f;
-            for (int r = 0; r < rows; r++)
-            {
-                float z = Mathf.Lerp(z0, z1, r / (float)(rows - 1));
-                rings.Add(GreenhouseRing(z, pts, 0f));
-            }
+            rearGlass = new MeshBuilder();
+            const int pts = 13;
+            const float z0 = -1.30f, zSplit = 0.0f, z1 = 1.22f;
+            // Front section: windshield + front side windows (lighter tint)
+            var front = new List<Vector3[]>();
+            for (int r = 0; r < 20; r++) front.Add(GreenhouseRing(Mathf.Lerp(zSplit, z1, r / 19f), pts, 0f));
             int gs = glass.Count;
-            glass.Loft(rings, false);
+            glass.Loft(front, false);
             glass.OrientOutward(gs, p => new Vector3(0f, 0.7f, p.z));
             glass.FixWinding();
+            // Rear section: rear side windows + rear window (dark privacy tint)
+            var rear = new List<Vector3[]>();
+            for (int r = 0; r < 18; r++) rear.Add(GreenhouseRing(Mathf.Lerp(z0, zSplit, r / 17f), pts, 0f));
+            rearGlass.Loft(rear, false);
+            rearGlass.OrientOutward(0, p => new Vector3(0f, 0.7f, p.z));
+            rearGlass.FixWinding();
 
-            // Roof panel (paint) over the flat part of the roof, and pillar strips at the glass edges
+            // Roof panel (paint) across the full roof width, and pillar strips at the glass edges
             var roof = new List<Vector3[]>();
             for (int r = 0; r < 16; r++)
             {
                 float z = Mathf.Lerp(-0.66f, 0.46f, r / 15f);
                 var full = GreenhouseRing(z, pts, 0.008f);
-                var arc = new Vector3[7];
-                for (int i = 0; i < 7; i++) arc[i] = full[3 + i];
+                var arc = new Vector3[9];
+                for (int i = 0; i < 9; i++) arc[i] = full[2 + i];
                 roof.Add(arc);
             }
             int ps = pillars.Count;
@@ -397,8 +404,13 @@ namespace Masar.EditorTools
             foreach (float az in new[] { AxleF, AxleR })
                 foreach (float x in new[] { -0.80f, 0.80f })
                     ArchLiner(mb, new Vector3(x, WheelR, az), 0.425f, 0.2f);
-            // Chassis tub so the space between the wheels never shows daylight
-            mb.Box(new Vector3(-0.66f, 0.18f, ZRear + 0.25f), new Vector3(0.66f, 0.80f, ZFront - 0.3f), 1f, true);
+            // Chassis tub so the space between the wheels never shows daylight. Tucked above the sill
+            // line and between the wheel arches, so it is not visible from the side.
+            mb.Box(new Vector3(-0.60f, 0.26f, AxleR - 0.30f), new Vector3(0.60f, 0.42f, AxleF + 0.30f), 1f, true);
+            // Inner wheel-well walls: block the view through the arches to the far side of the car
+            foreach (float az in new[] { AxleF, AxleR })
+                foreach (float s in new[] { -1f, 1f })
+                    mb.Box(new Vector3(s > 0 ? 0.62f : -0.65f, 0.22f, az - 0.46f), new Vector3(s > 0 ? 0.65f : -0.62f, 0.80f, az + 0.46f), 1f, true);
             // Mirrors
             foreach (float x in new[] { -1f, 1f })
             {
@@ -444,36 +456,40 @@ namespace Masar.EditorTools
             mb.Box(new Vector3(-0.12f, 0.38f, -0.40f), new Vector3(0.12f, 0.66f, 0.78f));      // center console
             mb.Box(new Vector3(-0.14f, 0.66f, 0.55f), new Vector3(0.14f, 0.92f, 0.72f));       // center stack
             mb.Cylinder(new Vector3(0f, 0.66f, 0.12f), 0.03f, 0.025f, 0.11f, 12);             // gear selector
-            mb.Box(new Vector3(-0.90f, 0.36f, -1.30f), new Vector3(-0.84f, 1.00f, 1.10f));     // left door card
-            mb.Box(new Vector3(0.84f, 0.36f, -1.30f), new Vector3(0.90f, 1.00f, 1.10f));       // right door card
-            mb.Box(new Vector3(-0.80f, 0.38f, 1.10f), new Vector3(0.80f, 0.80f, 1.20f));       // firewall
-            mb.Box(new Vector3(-0.85f, 0.60f, -1.80f), new Vector3(0.85f, 1.02f, -1.38f));     // parcel shelf / trunk wall
-            mb.Box(new Vector3(-0.12f, 1.33f, 0.36f), new Vector3(0.12f, 1.38f, 0.42f));       // rear-view mirror
+            // Door cards sit inside the body shell (the shell's inner half-width at the belt is about 0.72 m)
+            mb.Box(new Vector3(-0.72f, 0.40f, -1.22f), new Vector3(-0.67f, 0.96f, 1.05f));     // left door card
+            mb.Box(new Vector3(0.67f, 0.40f, -1.22f), new Vector3(0.72f, 0.96f, 1.05f));       // right door card
+            mb.Box(new Vector3(-0.70f, 0.38f, 1.10f), new Vector3(0.70f, 0.80f, 1.20f));       // firewall
+            mb.Box(new Vector3(-0.70f, 0.60f, -1.32f), new Vector3(0.70f, 0.98f, -1.24f));     // rear bulkhead / parcel shelf
+            mb.Box(new Vector3(-0.09f, 1.31f, 0.30f), new Vector3(0.09f, 1.35f, 0.33f));       // rear-view mirror
         }
 
         private static void BuildSeats(MeshBuilder mb)
         {
+            // Front seats: H-point about 0.55 m, headrest top about 1.24 m (below the roof and the rear glass)
             foreach (float x in new[] { -0.37f, 0.37f })
             {
-                mb.Box(new Vector3(x - 0.25f, 0.42f, -0.60f), new Vector3(x + 0.25f, 0.58f, -0.08f));      // cushion
-                var back = Matrix4x4.TRS(new Vector3(x, 0.58f, -0.62f), Quaternion.Euler(-14f, 0f, 0f), Vector3.one);
+                mb.Box(new Vector3(x - 0.24f, 0.40f, -0.50f), new Vector3(x + 0.24f, 0.54f, 0.02f));       // cushion
+                var back = Matrix4x4.TRS(new Vector3(x, 0.54f, -0.50f), Quaternion.Euler(-12f, 0f, 0f), Vector3.one);
                 mb.Transform = back;
-                mb.Box(new Vector3(-0.25f, 0f, -0.06f), new Vector3(0.25f, 0.62f, 0.06f));                 // backrest
-                mb.Box(new Vector3(-0.14f, 0.64f, -0.05f), new Vector3(0.14f, 0.84f, 0.05f));              // headrest
+                mb.Box(new Vector3(-0.24f, 0f, -0.06f), new Vector3(0.24f, 0.52f, 0.06f));                 // backrest
+                mb.Box(new Vector3(-0.13f, 0.54f, -0.05f), new Vector3(0.13f, 0.70f, 0.05f));              // headrest
                 mb.Transform = Matrix4x4.identity;
             }
-            mb.Box(new Vector3(-0.78f, 0.42f, -1.38f), new Vector3(0.78f, 0.58f, -0.92f));                 // rear bench
-            mb.Transform = Matrix4x4.TRS(new Vector3(0f, 0.58f, -1.40f), Quaternion.Euler(-18f, 0f, 0f), Vector3.one);
-            mb.Box(new Vector3(-0.78f, 0f, -0.06f), new Vector3(0.78f, 0.58f, 0.06f));
+            // Rear bench, inside the cabin (ahead of the rear bulkhead at z = -1.24)
+            mb.Box(new Vector3(-0.66f, 0.40f, -1.18f), new Vector3(0.66f, 0.54f, -0.78f));
+            mb.Transform = Matrix4x4.TRS(new Vector3(0f, 0.54f, -1.17f), Quaternion.Euler(-16f, 0f, 0f), Vector3.one);
+            mb.Box(new Vector3(-0.66f, 0f, -0.05f), new Vector3(0.66f, 0.46f, 0.05f));
             mb.Transform = Matrix4x4.identity;
         }
 
         private static void BuildHeadliner(MeshBuilder mb)
         {
             var rings = new List<Vector3[]>();
+            // Only under the flat part of the roof, so it never hangs down in front of the windshield
             for (int r = 0; r < 16; r++)
             {
-                float z = Mathf.Lerp(-1.0f, 0.75f, r / 15f);
+                float z = Mathf.Lerp(-0.62f, 0.36f, r / 15f);
                 var g = GreenhouseRing(z, 13, -0.035f);
                 var arc = new Vector3[7];
                 for (int i = 0; i < 7; i++) arc[i] = g[3 + i];

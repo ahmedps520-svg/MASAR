@@ -1,0 +1,22 @@
+{
+    "name": "Masar.Tests.PlayMode",
+    "rootNamespace": "Masar.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "Masar.Core",
+        "Masar.Vehicles"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
