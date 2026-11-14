@@ -1,0 +1,30 @@
+{
+    "name": "Masar.Editor",
+    "rootNamespace": "Masar.EditorTools",
+    "references": [
+        "Masar.Core",
+        "Masar.Input",
+        "Masar.Vehicles",
+        "Masar.Cameras",
+        "Masar.Diagnostics",
+        "Masar.World",
+        "Masar.Game",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Core.Editor",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.Editor",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

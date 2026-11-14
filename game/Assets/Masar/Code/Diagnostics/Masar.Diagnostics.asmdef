@@ -1,0 +1,16 @@
+{
+    "name": "Masar.Diagnostics",
+    "rootNamespace": "Masar.Diagnostics",
+    "references": [
+        "Masar.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

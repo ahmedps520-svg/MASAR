@@ -1,0 +1,133 @@
+name: MASAR game → TestFlight
+
+# Compiles, signs and uploads the MASAR game to TestFlight on a macOS runner.
+#
+# Input: the Unity-exported Xcode project, produced on Windows by tools/build-ios.ps1,
+#        zipped, AES-256 encrypted, and uploaded as the asset of the "xcode-latest"
+#        pre-release. It is encrypted because the repository is public and the export
+#        contains Unity engine libraries that must not be redistributed.
+#
+# Required repository secrets (BUILD_INSTRUCTIONS.md §4):
+#   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID, XCODE_ZIP_PASSPHRASE
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload to TestFlight (false = compile and sign only)"
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check secrets are configured
+        env:
+          HAS_P8: ${{ secrets.ASC_KEY_P8 != '' }}
+          HAS_PASS: ${{ secrets.XCODE_ZIP_PASSPHRASE != '' }}
+        run: |
+          missing=0
+          for v in ASC_KEY_ID ASC_ISSUER_ID APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret $v"; missing=1; fi
+          done
+          [ "$HAS_P8" = "true" ] || { echo "::error::Missing secret ASC_KEY_P8"; missing=1; }
+          [ "$HAS_PASS" = "true" ] || { echo "::error::Missing secret XCODE_ZIP_PASSPHRASE"; missing=1; }
+          exit $missing
+
+      - name: Disk space before
+        run: df -h /
+
+      - name: Select newest installed Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Download and decrypt the Xcode project
+        env:
+          XCODE_ZIP_PASSPHRASE: ${{ secrets.XCODE_ZIP_PASSPHRASE }}
+        run: |
+          gh release download xcode-latest --repo "$GITHUB_REPOSITORY" --pattern "masar-ios-xcode.zip.enc" --dir "$RUNNER_TEMP"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:XCODE_ZIP_PASSPHRASE \
+            -in "$RUNNER_TEMP/masar-ios-xcode.zip.enc" -out "$RUNNER_TEMP/xcode.zip"
+          rm "$RUNNER_TEMP/masar-ios-xcode.zip.enc"
+          mkdir -p "$RUNNER_TEMP/xcode"
+          unzip -q "$RUNNER_TEMP/xcode.zip" -d "$RUNNER_TEMP/xcode"
+          rm "$RUNNER_TEMP/xcode.zip"
+          ls "$RUNNER_TEMP/xcode"
+          cat "$RUNNER_TEMP/xcode/MASAR_BUILD_INFO.txt" || true
+
+      - name: Install API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+
+      - name: Archive (automatic signing via API key)
+        working-directory: ${{ runner.temp }}/xcode
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Unity-iPhone.xcodeproj \
+            -scheme Unity-iPhone \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/MASAR.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee "$RUNNER_TEMP/archive.log" | grep -E "error:|warning: .*deprecated|ARCHIVE (SUCCEEDED|FAILED)" || true
+          test -d "$RUNNER_TEMP/MASAR.xcarchive"
+
+      - name: Export and upload to TestFlight
+        if: ${{ inputs.upload }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>testFlightInternalTestingOnly</key><true/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/MASAR.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee "$RUNNER_TEMP/export.log" | grep -Ei "error|upload|EXPORT" || true
+          grep -q "EXPORT SUCCEEDED" "$RUNNER_TEMP/export.log" || grep -qi "Upload succeeded" "$RUNNER_TEMP/export.log"
+
+      - name: Disk space after
+        if: always()
+        run: df -h /
+
+      - name: Remove API key and decrypted project
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys" "$RUNNER_TEMP/xcode"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-game-logs
+          path: |
+            ${{ runner.temp }}/archive.log
+            ${{ runner.temp }}/export.log
+          retention-days: 7

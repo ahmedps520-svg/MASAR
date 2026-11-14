@@ -1,6 +1,6 @@
 # MASAR: Technical Architecture
 
-Status: **Phase 0 proposal, pending approval** (2026-11-14). The evidence behind every decision is in `docs/research/PHASE0_RESEARCH.md`.
+Status: **Phase 0 architecture. Engine choice confirmed by the owner (2026-11-14): Unity 6000.3.28f1 LTS + URP.** The evidence behind every decision is in `docs/research/PHASE0_RESEARCH.md`.
 
 Labels used in this document:
 - **[P0]**: built in Phase 0.
@@ -41,10 +41,10 @@ E:\MASAR\                       ← git repo (moved off OneDrive on 2026-11-14)
 │   │   │   ├─ Vehicles.View/    Masar.Vehicles.View      (wheel meshes, lights, gauges)
 │   │   │   ├─ Cameras/          Masar.Cameras.asmdef
 │   │   │   ├─ World/            Masar.World.asmdef       (cells, streaming, roads)
-│   │   │   ├─ Diagnostics/      Masar.Diagnostics.asmdef (perf HUD, captures)
-│   │   │   ├─ UI/               Masar.UI.asmdef
-│   │   │   ├─ Platform/iOS/     Masar.Platform.iOS + Plugins/iOS/*.mm
-│   │   │   └─ Editor/           Masar.Editor.asmdef      (generators, build scripts)
+│   │   │   ├─ Diagnostics/      Masar.Diagnostics.asmdef (perf monitor, iOS native metrics)
+│   │   │   ├─ Game/             Masar.Game.asmdef        (composition root, settings, session, UI)
+│   │   │   └─ Editor/           Masar.Editor.asmdef      (generators, project setup, build scripts)
+│   │   ├─ Plugins/iOS/          MasarNative.mm (thermal state, available memory, footprint)
 │   │   ├─ Tests/                EditMode + PlayMode tests (physics regression)
 │   │   ├─ Data/                 VehicleDefinitions, RuleSets, Settings defaults
 │   │   ├─ Art/                  Materials, Textures, Meshes, Prefabs

@@ -1,0 +1,17 @@
+{
+    "name": "Masar.Input",
+    "rootNamespace": "Masar.Input",
+    "references": [
+        "Masar.Core",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

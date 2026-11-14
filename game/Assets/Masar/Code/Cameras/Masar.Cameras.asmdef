@@ -1,0 +1,17 @@
+{
+    "name": "Masar.Cameras",
+    "rootNamespace": "Masar.Cameras",
+    "references": [
+        "Masar.Core",
+        "Masar.Vehicles"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
