@@ -35,10 +35,14 @@ namespace Masar.Game.UI
             var gas = MakePedal(root, "GAS", new Vector2(1, 0), new Vector2(-40, 40), new Color(0.1f, 0.75f, 0.45f, 0.38f), v => TouchInputState.Throttle = v);
             _ = brake; _ = gas;
 
-            // Buttons
-            MakeButton(root, "GEAR +", new Vector2(1, 0), new Vector2(-640, 230), () => TouchInputState.RequestShiftUp = true);
-            MakeButton(root, "GEAR -", new Vector2(1, 0), new Vector2(-640, 120), () => TouchInputState.RequestShiftDown = true);
-            var hb = MakeButton(root, "HANDBRAKE", new Vector2(1, 0), new Vector2(-640, 10), null, 150, 96);
+            // Gear selector: direct P/R/N/D (automatic) and +/- (manual sequential)
+            MakeButton(root, "D", new Vector2(1, 0), new Vector2(-610, 352), () => TouchInputState.RequestSelectDrive = true, 104, 100);
+            MakeButton(root, "N", new Vector2(1, 0), new Vector2(-610, 244), () => TouchInputState.RequestSelectNeutral = true, 104, 100);
+            MakeButton(root, "R", new Vector2(1, 0), new Vector2(-610, 136), () => TouchInputState.RequestSelectReverse = true, 104, 100);
+            MakeButton(root, "P", new Vector2(1, 0), new Vector2(-610, 28), () => TouchInputState.RequestSelectPark = true, 104, 100);
+            MakeButton(root, "+", new Vector2(1, 0), new Vector2(-726, 352), () => TouchInputState.RequestShiftUp = true, 104, 100);
+            MakeButton(root, "-", new Vector2(1, 0), new Vector2(-726, 244), () => TouchInputState.RequestShiftDown = true, 104, 100);
+            var hb = MakeButton(root, "HAND\nBRAKE", new Vector2(1, 0), new Vector2(-726, 28), null, 104, 208);
             var hold = hb.gameObject.AddComponent<HoldButton>();
             hold.onChange = v => TouchInputState.Handbrake = v ? 1f : 0f;
             MakeButton(root, "CAM", new Vector2(1, 1), new Vector2(-230, -30), () => TouchInputState.RequestNextCamera = true, 120, 80);
@@ -69,7 +73,8 @@ namespace Masar.Game.UI
 
         private static Button MakeButton(Transform root, string text, Vector2 anchor, Vector2 pos, System.Action onClick, float w = 150, float h = 96)
         {
-            var b = UIKit.Button(root, text, onClick, 24, new Color(0.1f, 0.1f, 0.12f, 0.55f));
+            int size = text.Length <= 2 ? 38 : text.Contains("\n") ? 19 : 24;   // big gear letters; two-line labels fit narrow buttons
+            var b = UIKit.Button(root, text, onClick, size, new Color(0.07f, 0.08f, 0.09f, 0.74f));
             UIKit.Place((RectTransform)b.transform, anchor, new Vector2(1, anchor.y), pos, new Vector2(w, h));
             b.gameObject.AddComponent<TouchMarker>();
             return b;

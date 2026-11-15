@@ -12,13 +12,14 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | Engine research and selection | ✅ | Sourced comparison. Unity 6.3 LTS URP selected (PHASE0_RESEARCH §3) |
 | Technical architecture | ✅ (draft) | TECHNICAL_ARCHITECTURE.md, including the risk register |
 | Repository and docs | ✅ | Public GitHub repo, all seven documents |
-| Windows → TestFlight pipeline | 🟡 | Probe compiles on a cloud Mac ✅. Signed TestFlight upload needs the Apple secrets (user) |
-| G923 iPadOS investigation | 🟡 | Research ✅. **On-device probe run** pending (needs TestFlight install) |
-| Playable skeleton (menu, car, cameras, input, overlay) | 🟡 | Code written. Compiles and runs in the Unity editor and a Windows build (needs Unity installed) |
-| Vehicle physics foundation | 🟡 | Pure-C# model + regression tests (0–100 km/h, braking, stability) |
-| Visual benchmark block | 🟡 | Generated Jeddah-style block with screenshots |
-| **Runs on the iPad** | ⬜ | TestFlight build launches on the iPad Pro M5; overlay numbers recorded in PERFORMANCE_REPORT.md |
-| Performance profiling | 🟡 | Overlay + CSV recorder. First device numbers pending |
+| Windows → TestFlight pipeline | 🟡 | Probe compiles on a cloud Mac ✅. iOS Xcode export ✅. Signed TestFlight upload ⛔ needs the Apple secrets (owner) |
+| G923 iPadOS investigation | 🟡 | Research ✅. **On-device probe run** ⛔ pending (needs TestFlight) |
+| Playable skeleton (menu, car, cameras, input, overlay) | ✅ | Compiles clean, runs in editor + Windows player, UI verified at iPad aspect |
+| Vehicle physics foundation | ✅ | Pure-C# model, 6/6 EditMode + 1/1 PlayMode tests |
+| Visual benchmark block | ✅ | Generated Jeddah-style block, reviewed and fixed over several render passes |
+| Graphics tiers + LOD/occlusion | ✅ | Four tiers measured (PC). Building LOD + baked occlusion |
+| **Runs on the iPad** | ⛔ | TestFlight build launches on the iPad Pro M5; overlay numbers recorded in PERFORMANCE_REPORT.md |
+| Performance profiling | 🟡 | Overlay + CSV + smoke-test reports working. Device numbers pending |
 
 **Gate 0 exit criteria:** the skeleton runs on the iPad from TestFlight, at least 30 fps sustained on High in the test block for 10 minutes with no thermal `critical` state; G923-on-iPad result recorded; owner approves Month 2 scope.
 

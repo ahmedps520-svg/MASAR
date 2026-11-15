@@ -9,6 +9,7 @@ namespace Masar.Game.UI
     public sealed class DriveHud : MonoBehaviour
     {
         public VehicleController vehicle;
+        private RectTransform _card;
         private Text _speed, _gear, _info;
         private Image _rpmFill;
         private Text _camera;
@@ -22,7 +23,8 @@ namespace Masar.Game.UI
             hud.vehicle = v;
 
             var card = UIKit.Panel(root, "Cluster", new Color(0, 0, 0, 0.42f));
-            UIKit.Place(card.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-28, 28), new Vector2(360, 190));
+            hud._card = card.rectTransform;
+            hud.SetTouchLayout(false);
 
             hud._speed = UIKit.Label(card.transform, "0", 92, UIKit.Text, TextAnchor.MiddleRight, FontStyle.Bold);
             UIKit.Anchor(hud._speed.rectTransform, new Vector2(0, 0.35f), new Vector2(0.72f, 1f), Vector2.zero, new Vector2(0, -6));
@@ -44,6 +46,14 @@ namespace Masar.Game.UI
             return hud;
         }
 
+        /// <summary>Bottom-right normally. Top-center when the touch controls own the bottom of the screen.</summary>
+        public void SetTouchLayout(bool touch)
+        {
+            if (_card == null) return;
+            if (touch) UIKit.Place(_card, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(360, 190));
+            else UIKit.Place(_card, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-28, 28), new Vector2(360, 190));
+        }
+
         public void ShowCameraName(string name)
         {
             _camera.text = name;
@@ -52,7 +62,9 @@ namespace Masar.Game.UI
 
         private void Update()
         {
-            if (vehicle == null || vehicle.Simulation == null) return;
+            bool show = UIKit.ModalCount == 0;
+            if (_card != null && _card.gameObject.activeSelf != show) _card.gameObject.SetActive(show);
+            if (vehicle == null || vehicle.Simulation == null || !show) return;
             var t = vehicle.Telemetry;
             _speed.text = Mathf.RoundToInt(Mathf.Abs(t.ForwardSpeedMs) * 3.6f).ToString();
 

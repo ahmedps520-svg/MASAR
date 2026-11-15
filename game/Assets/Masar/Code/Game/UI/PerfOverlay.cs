@@ -33,7 +33,10 @@ namespace Masar.Game.UI
 
         private void Update()
         {
-            if (!_visible || Time.unscaledTime < _next) return;
+            // Hidden while a menu or panel is open, so it never draws over them
+            bool show = _visible && UIKit.ModalCount == 0;
+            if (_canvas && _canvas.enabled != show) _canvas.enabled = show;
+            if (!show || Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + 0.25f;
             var p = PerformanceMonitor.Instance;
             if (p == null) return;

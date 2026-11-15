@@ -81,11 +81,21 @@ namespace Masar.Game
 
         private void OnSettingsChanged(MasarSettings s) => RefreshTouchControls();
 
+        /// <summary>QA only: show the touch controls even without a touchscreen (UI capture on desktop).</summary>
+        public void ForceTouchControls(bool on)
+        {
+            _forceTouch = on;
+            RefreshTouchControls();
+        }
+
+        private bool _forceTouch;
+
         private void RefreshTouchControls()
         {
-            bool want = SettingsStore.Current.showTouchControls && Touchscreen.current != null && !_paused;
+            bool want = (_forceTouch || (SettingsStore.Current.showTouchControls && Touchscreen.current != null)) && !_paused;
             if (want && _touch == null) _touch = TouchControls.Create(_canvas.transform);
             else if (!want && _touch != null) { Destroy(_touch.gameObject); _touch = null; }
+            if (_hud) _hud.SetTouchLayout(_touch != null);
         }
 
         private void Update()
@@ -96,7 +106,7 @@ namespace Masar.Game
 
         // ------------------------------------------------------------------ pause menu
 
-        private void SetPaused(bool paused)
+        public void SetPaused(bool paused)
         {
             _paused = paused;
             Time.timeScale = paused ? 0f : 1f;
@@ -109,8 +119,9 @@ namespace Masar.Game
 
         private void BuildPauseMenu()
         {
-            var bg = UIKit.Panel(_canvas.transform, "Pause", new Color(0, 0, 0, 0.55f));
+            var bg = UIKit.Panel(_canvas.transform, "Pause", new Color(0, 0, 0, 0.62f));
             UIKit.Anchor(bg.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            bg.gameObject.AddComponent<UIKit.ModalToken>();
             _pause = bg.gameObject;
 
             var col = UIKit.Rect(bg.transform, "Column");
@@ -136,17 +147,26 @@ namespace Masar.Game
             UIKit.Anchor(help.rectTransform, new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.14f), Vector2.zero, Vector2.zero);
         }
 
-        private void OpenSettings()
+        public void OpenSettings()
         {
             if (_subPanel) Destroy(_subPanel);
-            _subPanel = SettingsPanel.Create(_canvas.transform, cameraRig, () => { Destroy(_subPanel); _subPanel = null; },
+            if (_pause) _pause.SetActive(false);   // one menu on screen at a time
+            _subPanel = SettingsPanel.Create(_canvas.transform, cameraRig, CloseSubPanel,
                 t => vehicle.Simulation.Drivetrain.Mode = t).gameObject;
         }
 
         private void OpenDevices()
         {
             if (_subPanel) Destroy(_subPanel);
-            _subPanel = DevicePanel.Create(_canvas.transform, () => { Destroy(_subPanel); _subPanel = null; }).gameObject;
+            if (_pause) _pause.SetActive(false);
+            _subPanel = DevicePanel.Create(_canvas.transform, CloseSubPanel).gameObject;
+        }
+
+        private void CloseSubPanel()
+        {
+            if (_subPanel) Destroy(_subPanel);
+            _subPanel = null;
+            if (_pause) _pause.SetActive(true);
         }
 
         // ------------------------------------------------------------------ helpers

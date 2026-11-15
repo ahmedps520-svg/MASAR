@@ -20,9 +20,8 @@ namespace Masar.Game.UI
 
         public static DevicePanel Create(Transform parent, System.Action onClose)
         {
-            var bg = UIKit.Panel(parent, "DevicePanel", UIKit.PanelColor);
-            UIKit.Anchor(bg.rectTransform, new Vector2(0.08f, 0.06f), new Vector2(0.92f, 0.94f), Vector2.zero, Vector2.zero);
-            var panel = bg.gameObject.AddComponent<DevicePanel>();
+            var (root, bg) = UIKit.Modal(parent, "DevicePanel", new Vector2(0.08f, 0.06f), new Vector2(0.92f, 0.94f));
+            var panel = root.gameObject.AddComponent<DevicePanel>();
 
             var title = UIKit.Label(bg.transform, "Input devices & wheel test", 38, UIKit.Text, TextAnchor.UpperLeft, FontStyle.Bold);
             UIKit.Anchor(title.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(36, -80), new Vector2(-36, -24));

@@ -13,7 +13,49 @@ namespace Masar.Game.UI
     /// </summary>
     public static class UIKit
     {
-        public static readonly Color PanelColor = new Color(0.045f, 0.05f, 0.06f, 0.86f);
+        public static readonly Color PanelColor = new Color(0.055f, 0.062f, 0.072f, 0.985f);
+        public static readonly Color Scrim = new Color(0f, 0f, 0f, 0.6f);
+
+        /// <summary>Number of modal panels/menus open. The perf overlay and HUD hide while it is above zero.</summary>
+        public static int ModalCount;
+
+        /// <summary>
+        /// Full-screen dimmed backdrop that blocks input to what's behind it, with a centered
+        /// opaque box inside. Returns (root, box). Destroy the root to close.
+        /// </summary>
+        public static (RectTransform root, Image box) Modal(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
+        {
+            var scrim = Panel(parent, name, Scrim);
+            Anchor(scrim.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            scrim.gameObject.AddComponent<ModalToken>();
+            var box = Panel(scrim.transform, "Box", PanelColor);
+            Anchor(box.rectTransform, anchorMin, anchorMax, Vector2.zero, Vector2.zero);
+            return (scrim.rectTransform, box);
+        }
+
+        /// <summary>Counts an open modal for as long as its GameObject lives.</summary>
+        public sealed class ModalToken : MonoBehaviour
+        {
+            private void OnEnable() => ModalCount++;
+            private void OnDisable() => ModalCount = Mathf.Max(0, ModalCount - 1);
+        }
+
+        /// <summary>The kerb-stripe motif (alternating black and yellow), as used on Jeddah medians.</summary>
+        public static RectTransform KerbStripe(Transform parent, int segments, float segW, float h)
+        {
+            var row = Rect(parent, "KerbStripe");
+            row.sizeDelta = new Vector2(segments * segW, h);
+            for (int i = 0; i < segments; i++)
+            {
+                var s = Panel(row, "Seg", i % 2 == 0 ? new Color(0.89f, 0.66f, 0.07f) : new Color(0.06f, 0.06f, 0.07f));
+                var rt = s.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0, 0.5f);
+                rt.pivot = new Vector2(0, 0.5f);
+                rt.anchoredPosition = new Vector2(i * segW, 0);
+                rt.sizeDelta = new Vector2(segW, h);
+            }
+            return row;
+        }
         public static readonly Color PanelLight = new Color(0.10f, 0.11f, 0.13f, 0.92f);
         public static readonly Color Accent = new Color(0.0f, 0.62f, 0.42f, 1f);      // emerald
         public static readonly Color AccentDim = new Color(0.0f, 0.36f, 0.25f, 1f);

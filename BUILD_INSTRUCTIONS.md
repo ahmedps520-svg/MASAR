@@ -61,6 +61,7 @@ The generators output about 132 MB of meshes, plus the scenes, the test-car pref
 | Review screenshots at iPad resolution | `-executeMethod Masar.EditorTools.MasarScreenshots.CaptureAll -quality High`, written to `build/screenshots/` |
 | Player smoke test (unattended drive + perf report) | `build\windows\MASAR.exe -masarSmokeTest [-masarQuality High] [-masarUncapped] [-masarSmokeSeconds 12]`. The report is written to `%USERPROFILE%\AppData\LocalLow\MASAR Project\MASAR\` |
 | All graphics tiers, measured | `powershell -ExecutionPolicy Bypass -File tools\perf-tiers.ps1`, written to `build/perf/tiers.csv` |
+| UI layout capture at iPad aspect (menu, settings, devices, touch HUD, pause) | `build\windows\MASAR.exe -masarUiCapture -screen-width 1934 -screen-height 1333 -screen-fullscreen 0`, written to `ui_*.png` in the same LocalLow folder |
 
 ## 3. The iPad input probe (native, no Unity)
 

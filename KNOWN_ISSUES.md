@@ -44,6 +44,8 @@ Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school
 | T11 | **Fixed 2026-11-15:** quality tiers were excluded per platform | Inherited from the URP template: Medium/High/Ultra were excluded on iOS and Low on Windows, so the iPad would only have offered Low. `MasarProjectSetup` now clears the exclusions. Found by the per-tier measurement, before any device build was installed |
 | T12 | GPU Resident Drawer not yet verified as active | It's enabled on Medium and above, but draw counts don't prove it is working (every building mesh is unique, so there's little instancing to gain). Verify with the Frame Debugger or Profiler. City-scale draw-call reduction will come from per-cell mesh merging + HLOD (Month 3) |
 | T13 | Occlusion culling effect not isolated | The data bakes (457 KB), but its draw-call saving hasn't been measured separately |
+| T14 | **Fixed 2026-11-15:** UI layout bugs found by `-masarUiCapture` | The HUD overlapped the gas pedal, panels were see-through, the perf overlay drew over panels and the title, "HANDBRAKE" wrapped mid-word, and the touch gear selector needed three taps to reach D. All fixed and recaptured |
+| T15 | Touch controls are layout-verified only | The PC has no touchscreen. Multi-touch (steer + pedal at once), pedal feel and button sizes need testing on the iPad |
 | T10 | Review screenshots are edit-mode renders | `MasarScreenshots` renders the scene at rest. The PlayMode drive test and the player smoke test cover motion |
 
 ## Licensing and legal

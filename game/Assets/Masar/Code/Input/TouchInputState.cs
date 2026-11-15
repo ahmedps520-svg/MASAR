@@ -21,6 +21,7 @@ namespace Masar.Input
         public static bool RequestPause;
         public static bool RequestReset;
         public static bool RequestHeadlights;
+        public static bool RequestSelectPark, RequestSelectReverse, RequestSelectNeutral, RequestSelectDrive;
 
         /// <summary>Time.unscaledTime of the last touch interaction.</summary>
         public static float LastActivityTime = -100f;

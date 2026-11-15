@@ -109,6 +109,10 @@ namespace Masar.Input
             if (TouchInputState.RequestPause) { actions.Pause = true; TouchInputState.RequestPause = false; }
             if (TouchInputState.RequestReset) { actions.ResetVehicle = true; TouchInputState.RequestReset = false; }
             if (TouchInputState.RequestHeadlights) { actions.ToggleHeadlights = true; TouchInputState.RequestHeadlights = false; }
+            if (TouchInputState.RequestSelectPark) { actions.SelectPark = true; TouchInputState.RequestSelectPark = false; }
+            if (TouchInputState.RequestSelectReverse) { actions.SelectReverse = true; TouchInputState.RequestSelectReverse = false; }
+            if (TouchInputState.RequestSelectNeutral) { actions.SelectNeutral = true; TouchInputState.RequestSelectNeutral = false; }
+            if (TouchInputState.RequestSelectDrive) { actions.SelectDrive = true; TouchInputState.RequestSelectDrive = false; }
             look += TouchInputState.LookDelta;
             TouchInputState.LookDelta = Vector2.zero;
 

@@ -15,9 +15,8 @@ namespace Masar.Game.UI
     {
         public static SettingsPanel Create(Transform parent, CameraRig rig, Action onClose, Action<TransmissionKind> onTransmission = null)
         {
-            var bg = UIKit.Panel(parent, "SettingsPanel", UIKit.PanelColor);
-            UIKit.Anchor(bg.rectTransform, new Vector2(0.24f, 0.05f), new Vector2(0.76f, 0.95f), Vector2.zero, Vector2.zero);
-            var panel = bg.gameObject.AddComponent<SettingsPanel>();
+            var (root, bg) = UIKit.Modal(parent, "SettingsPanel", new Vector2(0.24f, 0.05f), new Vector2(0.76f, 0.95f));
+            var panel = root.gameObject.AddComponent<SettingsPanel>();
 
             var title = UIKit.Label(bg.transform, "Settings", 40, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold);
             UIKit.Anchor(title.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(36, -84), new Vector2(-36, -20));

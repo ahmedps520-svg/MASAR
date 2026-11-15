@@ -24,17 +24,21 @@ namespace Masar.Game.UI
             _canvas = UIKit.CreateCanvas("MainMenu", 10);
             var root = _canvas.transform;
 
-            // Backdrop: deep evening gradient (two stacked panels)
-            var top = UIKit.Panel(root, "BackdropTop", new Color(0.05f, 0.07f, 0.10f, 1f));
+            // Backdrop: deep asphalt with a slightly lighter band behind the content
+            var top = UIKit.Panel(root, "Backdrop", new Color(0.055f, 0.065f, 0.08f, 1f));
             UIKit.Anchor(top.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            var glow = UIKit.Panel(root, "BackdropGlow", new Color(0.55f, 0.32f, 0.14f, 0.35f));
-            UIKit.Anchor(glow.rectTransform, new Vector2(0, 0), new Vector2(1, 0.38f), Vector2.zero, Vector2.zero);
+            var band = UIKit.Panel(root, "Band", new Color(0.075f, 0.085f, 0.10f, 1f));
+            UIKit.Anchor(band.rectTransform, new Vector2(0, 0.08f), new Vector2(1, 0.62f), Vector2.zero, Vector2.zero);
 
-            // Title
+            // Title block on the right, clear of the performance overlay (top-left)
             var title = UIKit.Label(root, "MASAR", 150, UIKit.Text, TextAnchor.LowerLeft, FontStyle.Bold);
-            UIKit.Anchor(title.rectTransform, new Vector2(0.06f, 0.70f), new Vector2(0.7f, 0.92f), Vector2.zero, Vector2.zero);
-            var subtitle = UIKit.Label(root, "Jeddah urban driving simulator  ·  Phase 0 technical build", 34, UIKit.TextDim, TextAnchor.UpperLeft);
-            UIKit.Anchor(subtitle.rectTransform, new Vector2(0.063f, 0.62f), new Vector2(0.9f, 0.70f), Vector2.zero, Vector2.zero);
+            UIKit.Anchor(title.rectTransform, new Vector2(0.42f, 0.74f), new Vector2(0.96f, 0.94f), Vector2.zero, Vector2.zero);
+            var stripe = UIKit.KerbStripe(root, 8, 56f, 14f);
+            stripe.anchorMin = stripe.anchorMax = new Vector2(0.423f, 0.735f);
+            stripe.pivot = new Vector2(0f, 0.5f);
+            stripe.anchoredPosition = Vector2.zero;
+            var subtitle = UIKit.Label(root, "Jeddah urban driving simulator  ·  Phase 0 technical build", 32, UIKit.TextDim, TextAnchor.UpperLeft);
+            UIKit.Anchor(subtitle.rectTransform, new Vector2(0.423f, 0.64f), new Vector2(0.98f, 0.715f), Vector2.zero, Vector2.zero);
 
             // Menu column
             _menuColumn = UIKit.Rect(root, "Menu");
@@ -92,14 +96,14 @@ namespace Masar.Game.UI
             Debug.Log($"[MASAR] Scene '{driveScene}' loaded in {Time.realtimeSinceStartup - t0:F2}s");
         }
 
-        private void ToggleSettings()
+        public void ToggleSettings()
         {
             if (_devices) { Destroy(_devices); _devices = null; }
             if (_settings) { Destroy(_settings); _settings = null; return; }
             _settings = SettingsPanel.Create(_canvas.transform, null, () => { Destroy(_settings); _settings = null; }).gameObject;
         }
 
-        private void ToggleDevices()
+        public void ToggleDevices()
         {
             if (_settings) { Destroy(_settings); _settings = null; }
             if (_devices) { Destroy(_devices); _devices = null; return; }

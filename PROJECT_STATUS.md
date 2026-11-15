@@ -19,13 +19,16 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **In-engine drive test: pass** (accelerate, brake, turn, stays upright, real PhysX scene) | PERFORMANCE_REPORT.md |
 | Four real graphics tiers (Low/Medium/High/Ultra, each its own URP asset) | `Assets/Masar/Settings` |
 | Generated test car + Jeddah-style block, rendered review screenshots | `build/screenshots/` (local), see the Phase 0 report |
+| **Windows player build + unattended smoke test** | 194 MB, scripted drive passes |
+| **Graphics tiers measured** (PC reference): GPU 0.68 → 2.49 ms, draw calls 380 → 1,262 | PERFORMANCE_REPORT.md |
+| **Building LOD groups + baked Umbra occlusion culling** | Builder output, measured effect of LOD |
+| **iOS Xcode export** (iPad only, iPadOS 17+, all four tiers available) | 1,071 MB, 0 errors |
+| **UI layout verified at iPad aspect** (menu, settings, devices, touch HUD, pause) | `-masarUiCapture`, six layout bugs fixed |
+| Phase 0 report page | https://claude.ai/artifact/HqkUAUW13RHuMrH6qP5ycx (private to the owner) |
 
 ## In progress
 
-| Item | State |
-|---|---|
-| Windows player build + automated smoke test | Building |
-| iOS Xcode export | Next (iOS module now installed) |
+Nothing. Phase 0 work that doesn't need the iPad is complete.
 
 ## Blockers (owner action needed)
 
