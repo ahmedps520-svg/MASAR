@@ -74,7 +74,23 @@ The generators output about 132 MB of meshes, plus the scenes, the test-car pref
 gh workflow run ios-input-probe-testflight.yml --repo ahmedps520-svg/MASAR
 ```
 
-## 4. One-time Apple + GitHub secrets setup (you)
+## 4. One-time setup: one command (`tools/setup.ps1`)
+
+```bash
+powershell -ExecutionPolicy Bypass -File E:\MASAR\tools\setup.ps1
+```
+
+The script opens each page for you, waits, and stores everything:
+1. **App Store Connect API key.** Pick an existing `AuthKey_*.p8` from Downloads (a Team key with the Admin role), or create one on the page it opens. Then paste the Issuer ID and your Team ID.
+2. **GitHub secrets.** `ASC_KEY_ID`, `ASC_ISSUER_ID`, `APPLE_TEAM_ID`, `ASC_KEY_P8`, plus a freshly generated `XCODE_ZIP_PASSPHRASE`. These go into GitHub's encrypted secrets; nothing secret goes into the repo.
+3. **App record.** The `asc-preflight` workflow registers the bundle ID `app.masar.game` through Apple's API. You click *New App* once, because Apple has no API for creating app records.
+4. **ForgeBase token** for the diagnostics backend. It's registered with Claude Code as the `forgebase` MCP server, so Claude can create the project and read the reports.
+
+`TESTER_EMAIL` is already stored as a secret. After each upload, CI waits for Apple's processing, sets export compliance, ensures the **MASAR Internal** TestFlight group, and invites that email (`tools/ci/testflight_invite.py`).
+
+Why there's still a human step: Apple requires the account owner's own sign-in to create keys and app records. Claude doesn't sign in to accounts or type API keys or tokens into anything.
+
+### 4.0 Reference: what the setup script automates (manual equivalent)
 
 Claude can't do these steps: they involve your Apple account, keys and 2FA. They take about 15 minutes in a browser on Windows.
 

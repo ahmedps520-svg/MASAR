@@ -108,6 +108,16 @@ namespace Masar.Game
                 $"carSpeedKmh={(car.Telemetry.ForwardSpeedMs * 3.6f).ToString("F0", inv)}\ncarGear={car.Telemetry.Gear}\ncarUpright={car.transform.up.y.ToString("F3", inv)}\n";
             File.WriteAllText(Path.Combine(dir, $"masar_smoke_{tag}.txt"), report);
             Debug.Log("[MASAR smoke] report\n" + report);
+
+            // Optional: exercise the one-tap diagnostics path (local save + upload if configured)
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-masarDiagnostics") >= 0)
+            {
+                var up = Masar.Game.Diagnostics.DiagnosticsUploader.Ensure();
+                up.Send("smoke-test");
+                float wait = 0f;
+                while ((up.Busy || wait < 0.2f) && wait < 40f) { wait += Time.unscaledDeltaTime; yield return null; }
+                Debug.Log("[MASAR smoke] diagnostics: " + up.LastStatus);
+            }
             Application.Quit(0);
         }
     }

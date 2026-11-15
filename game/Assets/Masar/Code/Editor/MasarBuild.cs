@@ -28,6 +28,7 @@ namespace Masar.EditorTools
             bool dev = args.Contains("-development");
             string buildNumber = ArgValue(args, "-buildNumber") ?? "1";
             PlayerSettings.iOS.buildNumber = buildNumber;
+            WriteBuildInfo(buildNumber);
 
             string outDir = Path.Combine(RepoRoot, "build", "ios-xcode");
             if (Directory.Exists(outDir)) Directory.Delete(outDir, true);
@@ -47,6 +48,7 @@ namespace Masar.EditorTools
 
         public static void BuildWindows()
         {
+            WriteBuildInfo("win-" + DateTime.UtcNow.ToString("yyyyMMddHHmm"));
             string outDir = Path.Combine(RepoRoot, "build", "windows");
             var opts = new BuildPlayerOptions
             {
@@ -60,6 +62,24 @@ namespace Masar.EditorTools
         }
 
         private static string[] Scenes() => EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
+
+        /// <summary>Writes StreamingAssets/build_info.json (build number, commit, date), read by diagnostics reports.</summary>
+        private static void WriteBuildInfo(string buildNumber)
+        {
+            string commit = "unknown";
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("git", "rev-parse --short HEAD")
+                { WorkingDirectory = RepoRoot, RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+                using (var p = System.Diagnostics.Process.Start(psi)) { commit = p.StandardOutput.ReadToEnd().Trim(); p.WaitForExit(5000); }
+            }
+            catch { }
+            string dir = Path.Combine(Application.dataPath, "StreamingAssets");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "build_info.json"),
+                $"{{\"build\":\"{buildNumber}\",\"commit\":\"{commit}\",\"date\":\"{DateTime.UtcNow:o}\"}}");
+            AssetDatabase.Refresh();
+        }
 
         private static string ArgValue(string[] args, string key)
         {

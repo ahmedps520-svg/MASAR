@@ -78,3 +78,8 @@ secrets/
 # ---- Test-framework run artifacts (must never ship in Resources/) ----
 game/Assets/Resources/PerformanceTestRun*
 
+
+# ---- Build stamp written at build time ----
+game/Assets/StreamingAssets/build_info.json
+game/Assets/StreamingAssets/build_info.json.meta
+

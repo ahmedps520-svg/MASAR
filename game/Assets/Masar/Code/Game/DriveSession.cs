@@ -132,6 +132,7 @@ namespace Masar.Game
             UIKit.Size(UIKit.Button(col, "Resume", () => SetPaused(false), 30, UIKit.Accent), 84);
             UIKit.Size(UIKit.Button(col, $"Settings (camera: {CameraName(cameraRig.mode)})", OpenSettings, 28), 76);
             UIKit.Size(UIKit.Button(col, "Input devices & wheel test", OpenDevices, 28), 76);
+            DiagnosticsButton.Create(col, "pause-menu", 76f);
             UIKit.Size(UIKit.Button(col, "Reset vehicle to start", () =>
             {
                 if (spawnPoint) vehicle.Teleport(spawnPoint.position, spawnPoint.rotation); else vehicle.ResetUpright();

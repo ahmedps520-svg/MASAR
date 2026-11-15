@@ -12,6 +12,8 @@ namespace Masar.Diagnostics
     /// <summary>One sample of measured metrics. Negative values mean "not available on this platform".</summary>
     public struct PerfSample
     {
+        /// <summary>Seconds since startup when the sample was published.</summary>
+        public float Time;
         public float Fps;
         public float FrameMs;
         public float FrameMsWorst;      // worst frame in the window (1% low proxy)
@@ -49,6 +51,14 @@ namespace Masar.Diagnostics
         public float sampleWindow = 0.5f;
 
         public PerfSample Latest { get; private set; }
+
+        /// <summary>The last 10 minutes of samples (one every sampleWindow), oldest first. Used by diagnostics reports.</summary>
+        public readonly System.Collections.Generic.List<PerfSample> History = new System.Collections.Generic.List<PerfSample>(1200);
+        private const int HistoryCapacity = 1200;
+        /// <summary>Highest thermal state seen this session (-1 = not available).</summary>
+        public int PeakThermalState { get; private set; } = -1;
+        /// <summary>Lowest available-memory reading this session (bytes, -1 = not available).</summary>
+        public long MinAvailableBytes { get; private set; } = -1;
         public bool Recording => _csv != null;
         public string RecordingPath { get; private set; }
         /// <summary>Supplied by the game layer (e.g. the URP render scale), since diagnostics must not depend on rendering code.</summary>
@@ -95,6 +105,7 @@ namespace Masar.Diagnostics
 
             var s = new PerfSample
             {
+                Time = UnityEngine.Time.realtimeSinceStartup,
                 Fps = _frames / _accum,
                 FrameMs = _accum / _frames * 1000f,
                 FrameMsWorst = _worst * 1000f,
@@ -128,6 +139,10 @@ namespace Masar.Diagnostics
 
             Latest = s;
             _accum = 0f; _frames = 0; _worst = 0f;
+            if (History.Count >= HistoryCapacity) History.RemoveAt(0);
+            History.Add(s);
+            if (s.ThermalState > PeakThermalState) PeakThermalState = s.ThermalState;
+            if (s.AvailableBytes >= 0 && (MinAvailableBytes < 0 || s.AvailableBytes < MinAvailableBytes)) MinAvailableBytes = s.AvailableBytes;
 
             if (_csv != null)
             {

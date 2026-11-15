@@ -1,0 +1,28 @@
+name: App Store Connect preflight
+
+# Verifies the API key, registers the bundle ID if missing, and reports whether the
+# App Store Connect app record exists. Started by tools/setup.ps1; safe to re-run.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run preflight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          BUNDLE_ID: app.masar.game
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/key.p8"
+          export ASC_KEY_PATH="$RUNNER_TEMP/keys/key.p8"
+          python3 -m venv "$RUNNER_TEMP/venv" && source "$RUNNER_TEMP/venv/bin/activate"
+          pip install --quiet pyjwt cryptography
+          python tools/ci/asc_preflight.py
+          rm -rf "$RUNNER_TEMP/keys"

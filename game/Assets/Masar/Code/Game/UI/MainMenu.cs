@@ -42,11 +42,12 @@ namespace Masar.Game.UI
 
             // Menu column
             _menuColumn = UIKit.Rect(root, "Menu");
-            UIKit.Anchor(_menuColumn, new Vector2(0.06f, 0.12f), new Vector2(0.36f, 0.58f), Vector2.zero, Vector2.zero);
+            UIKit.Anchor(_menuColumn, new Vector2(0.06f, 0.06f), new Vector2(0.36f, 0.58f), Vector2.zero, Vector2.zero);
             UIKit.VStack(_menuColumn, 18, new RectOffset(0, 0, 0, 0), false);
             UIKit.Size(UIKit.Button(_menuColumn, "Free drive: Jeddah test block", OnDrive, 32, UIKit.Accent), 92);
             UIKit.Size(UIKit.Button(_menuColumn, "Settings", ToggleSettings, 30), 80);
             UIKit.Size(UIKit.Button(_menuColumn, "Input devices & wheel test", ToggleDevices, 30), 80);
+            DiagnosticsButton.Create(_menuColumn, "main-menu", 80f);
 #if !UNITY_IOS
             UIKit.Size(UIKit.Button(_menuColumn, "Quit", Application.Quit, 30), 80);
 #endif

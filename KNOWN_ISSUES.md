@@ -10,7 +10,8 @@ Status labels: **Working**: implemented and tested. **Prototype**: implemented, 
 | L2 | **No genuine force feedback on iPad** | Blocked (platform) | iPadOS has no public FFB API. The game shows **no** FFB settings anywhere. A DriverKit (USBDriverKit) research spike needs the paid account and is unproven: Apple's HID driver may claim the wheel first |
 | L3 | No Mac | Limitation | No Xcode debugger or Instruments. Diagnostics come from the in-game overlay, CSV logs, the Unity Profiler over Wi-Fi (development builds) and TestFlight crash reports |
 | L4 | The engine must be installed by the user | Resolved when done | Installing the Unity editor needs a Windows admin prompt and a Unity account sign-in (BUILD_INSTRUCTIONS §1) |
-| L5 | Apple secrets not yet configured | Blocked on user | TestFlight workflows fail fast with a clear message until the §4 secrets exist |
+| L5 | Apple secrets not yet configured | Blocked on user | Run `tools/setup.ps1` once. TestFlight workflows fail fast with a clear message until the secrets exist |
+| L6 | Diagnostics upload not configured yet | Blocked on user | The **Send diagnostics** button works and saves locally (Files app > MASAR > diagnostics), and it says "Upload isn't configured yet" until the ForgeBase project exists (setup step 4) |
 
 ## Phase 0 placeholders (not final quality)
 

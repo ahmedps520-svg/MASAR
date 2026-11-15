@@ -28,6 +28,8 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       GH_TOKEN: ${{ github.token }}
     steps:
+      - uses: actions/checkout@v4   # for tools/ci scripts
+
       - name: Check secrets are configured
         env:
           HAS_P8: ${{ secrets.ASC_KEY_P8 != '' }}
@@ -63,6 +65,8 @@ jobs:
           rm "$RUNNER_TEMP/xcode.zip"
           ls "$RUNNER_TEMP/xcode"
           cat "$RUNNER_TEMP/xcode/MASAR_BUILD_INFO.txt" || true
+          BN=$(grep '^build=' "$RUNNER_TEMP/xcode/MASAR_BUILD_INFO.txt" | cut -d= -f2 | tr -d '\r')
+          echo "BUILD_NUMBER=${BN}" >> "$GITHUB_ENV"
 
       - name: Install API key
         env:
@@ -114,6 +118,17 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee "$RUNNER_TEMP/export.log" | grep -Ei "error|upload|EXPORT" || true
           grep -q "EXPORT SUCCEEDED" "$RUNNER_TEMP/export.log" || grep -qi "Upload succeeded" "$RUNNER_TEMP/export.log"
+
+      - name: TestFlight - wait for processing and invite the tester
+        if: ${{ inputs.upload }}
+        env:
+          TESTER_EMAIL: ${{ secrets.TESTER_EMAIL }}
+          BUNDLE_ID: app.masar.game
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          source "$RUNNER_TEMP/venv/bin/activate"
+          pip install --quiet pyjwt cryptography
+          python "$GITHUB_WORKSPACE/tools/ci/testflight_invite.py"
 
       - name: Disk space after
         if: always()
