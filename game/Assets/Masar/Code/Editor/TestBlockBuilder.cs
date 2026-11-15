@@ -78,16 +78,19 @@ namespace Masar.EditorTools
             var m = CityMaterials.Create();
             var world = new GameObject("World").transform;
 
+            var ground = new MeshBatch();
             var roads = new MeshBatch();
             var raised = new MeshBatch();
-            BuildGround(roads, m);
+            BuildGround(ground, m);
             BuildRoads(roads, m);
             BuildMarkings(roads, m);
+            BuildRoadDetails(roads, m);
             BuildRaised(raised, m);
-            var roadGos = roads.Flush(world, "Roads", MeshDir, collider: true);
-            var raisedGos = raised.Flush(world, "Sidewalks", MeshDir, collider: true);
-            foreach (var g in roadGos) MarkStatic(g);
-            foreach (var g in raisedGos) MarkStatic(g);
+            // The 5 km ground plane is collidable but excluded from occlusion (it would inflate the bake volume)
+            foreach (var g in ground.Flush(world, "Ground", MeshDir, collider: true))
+                GameObjectUtility.SetStaticEditorFlags(g, StaticEditorFlags.ReflectionProbeStatic);
+            foreach (var g in roads.Flush(world, "Roads", MeshDir, collider: true)) MarkStatic(g, occluder: false);
+            foreach (var g in raised.Flush(world, "Sidewalks", MeshDir, collider: true)) MarkStatic(g, occluder: false);
 
             BuildStreetFurniture(world, m);
             BuildBuildings(world, m);
@@ -129,7 +132,17 @@ namespace Masar.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             bool baked = Lightmapping.Bake();
             Debug.Log($"[MASAR] Environment/reflection bake: {(baked ? "OK" : "FAILED")}");
+
+            // Umbra occlusion culling: buildings occlude, everything static is an occludee
+            StaticOcclusionCulling.smallestOccluder = 4f;
+            StaticOcclusionCulling.smallestHole = 0.25f;
+            StaticOcclusionCulling.backfaceThreshold = 100f;
+            var t0 = System.DateTime.Now;
+            bool occ = StaticOcclusionCulling.Compute();
             EditorSceneManager.SaveScene(scene, ScenePath);
+            var occFile = new System.IO.FileInfo("Assets/Masar/Scenes/TestBlock/OcclusionCullingData.asset");
+            Debug.Log($"[MASAR] Occlusion bake: {(occ ? "OK" : "FAILED")} in {(System.DateTime.Now - t0).TotalSeconds:F0}s, " +
+                      $"data file {(occFile.Exists ? occFile.Length / 1024 + " KB" : "missing")}");
         }
 
         // ------------------------------------------------------------------ ground & roads
@@ -385,7 +398,7 @@ namespace Masar.EditorTools
             for (float x = -90f; x <= 90f; x += 18f) BuildingKit.DatePalm(batch, m, new Vector3(x, Kerb, SouthZ + CrossHalf + 1.5f), seed++);
             for (float x = -20f; x <= 30f; x += 9f) for (float z = -78f; z <= -50f; z += 9f) BuildingKit.DatePalm(batch, m, new Vector3(x + (seed % 3), Kerb, z), seed++);
 
-            foreach (var g in batch.Flush(parent, "Furniture", MeshDir, collider: false)) MarkStatic(g);
+            foreach (var g in batch.Flush(parent, "Furniture", MeshDir, collider: false)) MarkStatic(g, occluder: false);
             foreach (var (p, r, h) in colliders)
             {
                 var c = new GameObject("PoleCollider").AddComponent<CapsuleCollider>();
@@ -483,10 +496,72 @@ namespace Masar.EditorTools
         {
             var root = new GameObject(name).transform;
             root.SetParent(parent, false);
-            foreach (var g in batch.Flush(root, name, MeshDir, collider: false)) MarkStatic(g);
+            var all = new List<Renderer>();
+            var core = new List<Renderer>();
+            foreach (var g in batch.Flush(root, name, MeshDir, collider: false))
+            {
+                MarkStatic(g, occluder: true);
+                var r = g.GetComponent<Renderer>();
+                all.Add(r);
+                if (!IsDetailMaterial(r.sharedMaterial)) core.Add(r);
+            }
+            // Distance-based detail: LOD0 = everything, LOD1 = walls/glass/roof only, then culled.
+            // Thresholds are screen-height fractions; each quality tier scales them through its LOD bias.
+            var lod = root.gameObject.AddComponent<LODGroup>();
+            // Hard switch: the dropped parts are small details, so popping is negligible, and it avoids
+            // the dithered cross-fade cost on the GPU (and the dither speckle seen in the review renders).
+            lod.fadeMode = LODFadeMode.None;
+            lod.SetLODs(new[] { new LOD(0.22f, all.ToArray()), new LOD(0.012f, core.ToArray()) });
+            lod.RecalculateBounds();
             var col = root.gameObject.AddComponent<BoxCollider>();
             col.center = collider.center;
             col.size = collider.size;
+        }
+
+        /// <summary>Small facade details that are invisible at distance: frames, railings, AC units, tanks, gates, dishes.</summary>
+        private static bool IsDetailMaterial(Material mat)
+        {
+            if (mat == null) return false;
+            string n = mat.name;
+            return n.StartsWith("City_Frame") || n.StartsWith("City_RailingMetal") || n.StartsWith("City_AcUnit") ||
+                   n.StartsWith("City_WaterTank") || n.StartsWith("City_GateMetal") || n.StartsWith("City_PoleMetal") ||
+                   n.StartsWith("City_SatelliteDish");
+        }
+
+        /// <summary>Street-level wear and furniture: asphalt repair patches, manhole covers, sidewalk bollards.</summary>
+        private static void BuildRoadDetails(MeshBatch b, CityMaterials m)
+        {
+            var rnd = new System.Random(7);
+            bool NearJunction(float x) => Mathf.Abs(Mathf.Abs(x) - CrossX) < CrossHalf + CrossWalk + 6f || (x > UTurnX0 - 2f && x < UTurnX1 + 2f);
+            // Repair patches on the avenue carriageways
+            for (int i = 0; i < 46; i++)
+            {
+                float x = Mathf.Lerp(-Extent + 10f, Extent - 20f, (float)rnd.NextDouble());
+                if (NearJunction(x)) continue;
+                int side = rnd.Next(2) == 0 ? -1 : 1;
+                float zc = side * (MedianHalf + 1.0f + (float)rnd.NextDouble() * 9.0f);
+                float w = 0.8f + (float)rnd.NextDouble() * 2.6f, len = 1.2f + (float)rnd.NextDouble() * 5.5f;
+                b[m.AsphaltPatch].FloorRect(x, zc - w * 0.5f, x + len, zc + w * 0.5f, 0.003f, 7f);
+            }
+            // Manhole covers in the lanes
+            for (int i = 0; i < 24; i++)
+            {
+                float x = Mathf.Lerp(-Extent + 10f, Extent - 10f, (float)rnd.NextDouble());
+                if (NearJunction(x)) continue;
+                int side = rnd.Next(2) == 0 ? -1 : 1;
+                float z = side * (MedianHalf + 1.75f + rnd.Next(3) * 3.5f);
+                b[m.Manhole].Cylinder(new Vector3(x, 0f, z), 0.33f, 0.33f, 0.008f, 18, true);
+            }
+            // Bollards along the avenue sidewalks (protecting the shopfronts), every 2.5 m
+            for (float x = -Extent + 2f; x < Extent - 2f; x += 2.5f)
+            {
+                if (Mathf.Abs(Mathf.Abs(x) - CrossX) < CrossHalf + CrossWalk + 1.5f) continue;
+                foreach (int side in new[] { -1, 1 })
+                {
+                    var p = new Vector3(x, Kerb, side * (CarriageOuter + 0.5f));
+                    b[m.Bollard].Cylinder(p, 0.085f, 0.075f, 0.82f, 10, true);
+                }
+            }
         }
 
         // ------------------------------------------------------------------ signals
@@ -634,10 +709,11 @@ namespace Masar.EditorTools
             p.blendDistance = 6f;
         }
 
-        private static void MarkStatic(GameObject go)
+        private static void MarkStatic(GameObject go, bool occluder)
         {
-            GameObjectUtility.SetStaticEditorFlags(go,
-                StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
+            var flags = StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic;
+            if (occluder) flags |= StaticEditorFlags.OccluderStatic;
+            GameObjectUtility.SetStaticEditorFlags(go, flags);
         }
     }
 }

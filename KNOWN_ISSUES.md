@@ -41,6 +41,9 @@ Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school
 | T7 | Generated meshes, scenes, prefab and materials are not in git (about 132 MB per regeneration) | After a fresh clone, run **MASAR → Setup → Configure Project** and **MASAR → Build → Test Block Scene**, or `-executeMethod Masar.EditorTools.MasarProjectSetup.ConfigureAndBuildScenes`. The builders are the source of truth |
 | T8 | Idle settles at about 693 rpm instead of the 750 target | The idle governor's throttle authority is slightly low. Tuning item for Month 2 |
 | T9 | Test-car cockpit is crude | Very dark untextured dashboard, a boxy rear-view mirror, the gauge cluster is an emissive panel (no working needles). Phase 0 placeholder (P1) |
+| T11 | **Fixed 2026-11-15:** quality tiers were excluded per platform | Inherited from the URP template: Medium/High/Ultra were excluded on iOS and Low on Windows, so the iPad would only have offered Low. `MasarProjectSetup` now clears the exclusions. Found by the per-tier measurement, before any device build was installed |
+| T12 | GPU Resident Drawer not yet verified as active | It's enabled on Medium and above, but draw counts don't prove it is working (every building mesh is unique, so there's little instancing to gain). Verify with the Frame Debugger or Profiler. City-scale draw-call reduction will come from per-cell mesh merging + HLOD (Month 3) |
+| T13 | Occlusion culling effect not isolated | The data bakes (457 KB), but its draw-call saving hasn't been measured separately |
 | T10 | Review screenshots are edit-mode renders | `MasarScreenshots` renders the scene at rest. The PlayMode drive test and the player smoke test cover motion |
 
 ## Licensing and legal

@@ -61,8 +61,12 @@ namespace Masar.World
             QuadUV(a, b, c, d, new Vector2(x0, z0) / uvScale, new Vector2(x0, z1) / uvScale, new Vector2(x1, z1) / uvScale, new Vector2(x1, z0) / uvScale);
         }
 
-        /// <summary>Axis-aligned box (min/max), all 6 faces outward. Optionally skip the bottom face.</summary>
-        public void Box(Vector3 min, Vector3 max, float uvScale = 1f, bool bottom = false, bool top = true)
+        /// <summary>
+        /// Axis-aligned box (min/max), all 6 faces outward. The bottom face is on by default,
+        /// because canopies, balcony slabs, sills and AC units are seen from below at street level.
+        /// Pass bottom: false only for boxes that sit on the ground.
+        /// </summary>
+        public void Box(Vector3 min, Vector3 max, float uvScale = 1f, bool bottom = true, bool top = true)
         {
             Vector3 p000 = new Vector3(min.x, min.y, min.z), p100 = new Vector3(max.x, min.y, min.z);
             Vector3 p010 = new Vector3(min.x, max.y, min.z), p110 = new Vector3(max.x, max.y, min.z);
@@ -77,7 +81,7 @@ namespace Masar.World
         }
 
         /// <summary>Box centered at c with size s.</summary>
-        public void BoxC(Vector3 c, Vector3 s, float uvScale = 1f, bool bottom = false) => Box(c - s * 0.5f, c + s * 0.5f, uvScale, bottom);
+        public void BoxC(Vector3 c, Vector3 s, float uvScale = 1f, bool bottom = true) => Box(c - s * 0.5f, c + s * 0.5f, uvScale, bottom);
 
         /// <summary>Vertical cylinder (or cone/frustum) from y0 to y1.</summary>
         public void Cylinder(Vector3 baseCenter, float r0, float r1, float height, int segments, bool cap = true, float uvScale = 1f)

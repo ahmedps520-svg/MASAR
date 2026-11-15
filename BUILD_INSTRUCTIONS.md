@@ -48,6 +48,20 @@ Command-line equivalents (used by Claude Code):
 "E:/Unity/Editors/6000.3.28f1/Editor/Unity.exe" -batchmode -projectPath E:/MASAR/game -runTests -testPlatform EditMode -testResults E:/MASAR/build/tests.xml -logFile E:/MASAR/build/tests.log
 ```
 
+### Generated content is not in git
+
+The generators output about 132 MB of meshes, plus the scenes, the test-car prefab and the materials. All of it is **gitignored**, because the builders in `Assets/Masar/Code/Editor` are the source of truth. After a fresh clone, or after changing a generator, run `ConfigureAndBuildScenes` (above) before playing or building.
+
+### Automated checks on Windows
+
+| Check | Command |
+|---|---|
+| Physics unit tests (EditMode) | `-runTests -testPlatform EditMode` (above) |
+| Full-stack drive test in the real scene (PlayMode) | `"E:/Unity/Editors/6000.3.28f1/Editor/Unity.exe" -batchmode -projectPath E:/MASAR/game -runTests -testPlatform PlayMode -testResults E:/MASAR/build/playtests.xml` |
+| Review screenshots at iPad resolution | `-executeMethod Masar.EditorTools.MasarScreenshots.CaptureAll -quality High`, written to `build/screenshots/` |
+| Player smoke test (unattended drive + perf report) | `build\windows\MASAR.exe -masarSmokeTest [-masarQuality High] [-masarUncapped] [-masarSmokeSeconds 12]`. The report is written to `%USERPROFILE%\AppData\LocalLow\MASAR Project\MASAR\` |
+| All graphics tiers, measured | `powershell -ExecutionPolicy Bypass -File tools\perf-tiers.ps1`, written to `build/perf/tiers.csv` |
+
 ## 3. The iPad input probe (native, no Unity)
 
 `tools/probes/ios-input-probe` is a small SwiftUI app. It reports what iPadOS exposes for the G923, plus thermal state, memory and GPU details.

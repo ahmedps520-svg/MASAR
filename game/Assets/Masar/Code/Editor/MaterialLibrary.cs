@@ -125,6 +125,82 @@ namespace Masar.EditorTools
             return m;
         }
 
+        /// <summary>
+        /// Date-palm frond material. The leaflet texture is generated procedurally (self-made, no
+        /// external asset): a midrib with angled, tapering leaflets on both sides, alpha-clipped
+        /// and double-sided.
+        /// </summary>
+        public static Material PalmFrond()
+        {
+            const string texPath = "Assets/Masar/Generated/PalmFrond.png";
+            if (!File.Exists(texPath))
+            {
+                const int W = 256, H = 1024;
+                var px = new Color32[W * H];
+                var rnd = new System.Random(42);
+                void Dot(int cx, int cy, float r, Color32 c)
+                {
+                    int ri = Mathf.CeilToInt(r);
+                    for (int y = cy - ri; y <= cy + ri; y++)
+                        for (int x = cx - ri; x <= cx + ri; x++)
+                        {
+                            if (x < 0 || y < 0 || x >= W || y >= H) continue;
+                            if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > r * r) continue;
+                            px[y * W + x] = c;
+                        }
+                }
+                // Midrib
+                for (int y = 0; y < H; y++) Dot(W / 2, y, Mathf.Lerp(3.5f, 1.2f, y / (float)H), new Color32(120, 112, 58, 255));
+                // Leaflets, angled toward the tip, longest in the middle of the frond
+                for (float v = 0.07f; v < 0.98f; v += 0.0105f)
+                {
+                    float env = Mathf.Sin(Mathf.Clamp01((v - 0.04f) / 0.96f) * Mathf.PI);
+                    float len = (0.20f + 0.78f * env) * (W * 0.5f - 4f);
+                    foreach (int side in new[] { -1, 1 })
+                    {
+                        float jitter = (float)rnd.NextDouble();
+                        var col = new Color32((byte)(38 + 22 * jitter), (byte)(70 + 30 * jitter), (byte)(22 + 12 * jitter), 255);
+                        int steps = Mathf.CeilToInt(len);
+                        for (int s = 0; s <= steps; s++)
+                        {
+                            float t = s / (float)steps;
+                            float x = W * 0.5f + side * t * len;
+                            float y = v * H + t * len * 0.75f;              // swept toward the tip
+                            Dot(Mathf.RoundToInt(x), Mathf.RoundToInt(y), Mathf.Lerp(3.2f, 0.8f, t), col);
+                        }
+                    }
+                }
+                var tex = new Texture2D(W, H, TextureFormat.RGBA32, false);
+                tex.SetPixels32(px);
+                File.WriteAllBytes(texPath, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(texPath);
+                var imp = (TextureImporter)AssetImporter.GetAtPath(texPath);
+                imp.alphaIsTransparency = true;
+                imp.wrapMode = TextureWrapMode.Clamp;
+                imp.mipmapEnabled = true;
+                imp.mipMapsPreserveCoverage = true;
+                imp.alphaTestReferenceValue = 0.5f;
+                imp.SaveAndReimport();
+            }
+            string path = $"{MatRoot}/City_PalmFrond.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null) { m = new Material(Lit); AssetDatabase.CreateAsset(m, path); }
+            m.shader = Lit;
+            m.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(texPath));
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_AlphaClip", 1f);
+            m.SetFloat("_Cutoff", 0.5f);
+            m.EnableKeyword("_ALPHATEST_ON");
+            m.SetFloat("_Cull", 0f);
+            m.SetFloat("_Smoothness", 0.25f);
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            m.SetOverrideTag("RenderType", "TransparentCutout");
+            m.enableInstancing = true;
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
         // ------------------------------------------------------------------ textures
 
         private static Texture2D Load(string path, bool normal, bool linear = false)

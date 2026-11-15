@@ -36,6 +36,13 @@ namespace Masar.Game
             go.AddComponent<SmokeTest>();
         }
 
+        private static string Arg(string key)
+        {
+            var a = System.Environment.GetCommandLineArgs();
+            int i = System.Array.IndexOf(a, key);
+            return i >= 0 && i + 1 < a.Length ? a[i + 1] : null;
+        }
+
         private IEnumerator Start()
         {
             string dir = Application.persistentDataPath;
@@ -43,6 +50,20 @@ namespace Masar.Game
             SceneManager.LoadScene("TestBlock");
             yield return null;
             yield return null;
+            // Optional overrides for comparable per-tier measurements
+            string q = Arg("-masarQuality");
+            if (q != null)
+            {
+                int qi = System.Array.IndexOf(QualitySettings.names, q);
+                if (qi >= 0) QualitySettings.SetQualityLevel(qi, true);
+            }
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-masarUncapped") >= 0)
+            {
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 1000;
+            }
+            float duration = float.TryParse(Arg("-masarSmokeSeconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : 10f;
+            string tag = QualitySettings.names[QualitySettings.GetQualityLevel()];
             var car = FindFirstObjectByType<VehicleController>();
             if (car == null) { Debug.LogError("[MASAR smoke] no vehicle found"); Application.Quit(2); yield break; }
             var driver = new ScriptedDriver();
@@ -56,7 +77,7 @@ namespace Masar.Game
             var perf = PerformanceMonitor.Instance;
             float t = 0f, sumFps = 0f, worst = 0f; int n = 0;
             double sumGpu = 0, sumCpu = 0; int nGpu = 0, nCpu = 0;
-            while (t < 10f)
+            while (t < duration)
             {
                 t += Time.unscaledDeltaTime;
                 if (t > 2f && perf != null)  // skip warm-up
@@ -70,7 +91,7 @@ namespace Masar.Game
                 yield return null;
             }
 
-            string shot = Path.Combine(dir, "masar_smoke.png");
+            string shot = Path.Combine(dir, $"masar_smoke_{tag}.png");
             ScreenCapture.CaptureScreenshot(shot);
             yield return new WaitForSeconds(0.5f);
 
@@ -85,7 +106,7 @@ namespace Masar.Game
                 $"unityAllocMB={(last.UnityAllocatedBytes / 1048576.0).ToString("F0", inv)}\nfootprintMB={(last.FootprintBytes < 0 ? -1 : last.FootprintBytes / 1048576.0).ToString("F0", inv)}\n" +
                 $"drawCalls={last.DrawCalls}\nbatches={last.Batches}\ntriangles={last.Triangles}\n" +
                 $"carSpeedKmh={(car.Telemetry.ForwardSpeedMs * 3.6f).ToString("F0", inv)}\ncarGear={car.Telemetry.Gear}\ncarUpright={car.transform.up.y.ToString("F3", inv)}\n";
-            File.WriteAllText(Path.Combine(dir, "masar_smoke.txt"), report);
+            File.WriteAllText(Path.Combine(dir, $"masar_smoke_{tag}.txt"), report);
             Debug.Log("[MASAR smoke] report\n" + report);
             Application.Quit(0);
         }

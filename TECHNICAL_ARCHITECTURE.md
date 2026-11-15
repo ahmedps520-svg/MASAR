@@ -124,9 +124,22 @@ Assembly definitions enforce the layering. `Vehicles` must not reference `UI`, `
   - Ring 2 is HLOD only.
 - Traffic and pedestrians use the same distance tiers (see §8).
 
-### 4.4 Quality tiers [Planned for the settings UI; the values are tuned on device]
+**Implemented in Phase 0:**
+- Every generated building has a **LODGroup**. LOD0 is all renderers. LOD1 drops the small-detail materials (window frames, railings, AC units, tanks, gates, dishes) below 22% of screen height. The whole building is culled below 1.2%. It uses hard switches: no cross-fade, so no dither cost.
+- **Umbra occlusion culling** is baked: buildings are occluders; roads, sidewalks and furniture are occludees only. The 5 km ground plane is excluded so the bake volume stays small.
 
-Low, Medium, High, Ultra and Custom each map to a single `QualityProfile` asset. Each setting drives a real URP or engine parameter. **A setting is exposed only once a profiler capture shows it changes the cost.**
+### 4.4 Quality tiers [P0: Low/Medium/High/Ultra working and measured; Custom planned]
+
+Each tier is a Unity quality level with its own URP asset (`Assets/Masar/Settings/URP_*.asset`), created by `MasarProjectSetup`:
+
+| Tier | Render scale | Shadows | Cascades | SSAO | HDR | STP | LOD bias | GPU Resident Drawer |
+|---|---|---|---|---|---|---|---|---|
+| Low | 0.60 | 60 m, 1024, hard | 1 | off | off | off | 0.6 | off |
+| Medium | 0.72 | 90 m, 2048, soft | 2 | off | on | on | 1.0 | on |
+| High | 0.82 | 130 m, 2048, soft | 3 | on | on | on | 1.5 | on |
+| Ultra | 1.00 | 180 m, 4096, soft | 4 | on | on | on | 2.0 | on |
+
+The measured PC cost per tier is in PERFORMANCE_REPORT.md (GPU 0.68 → 2.49 ms, draw calls 380 → 1,262). A **Custom** tier exposing individual settings comes later. **A setting is exposed only once a measurement shows it changes the cost.**
 
 ---
 

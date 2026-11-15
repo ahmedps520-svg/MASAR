@@ -74,3 +74,7 @@ node_modules/
 *.key
 *.pem
 secrets/
+
+# ---- Test-framework run artifacts (must never ship in Resources/) ----
+game/Assets/Resources/PerformanceTestRun*
+

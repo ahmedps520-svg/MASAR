@@ -14,6 +14,7 @@ namespace Masar.EditorTools
         public Material[] Signs;
         public Material PalmTrunk, PalmFrond, PoleMetal, LampHead, SignalBox, SignalRed, SignalAmber, SignalGreen;
         public Material Gate, DomeGreen, Marble;
+        public Material AsphaltPatch, Manhole, Bollard, Dish;
 
         public static CityMaterials Create()
         {
@@ -38,8 +39,12 @@ namespace Masar.EditorTools
                 AcUnit = MaterialLibrary.Solid("City_AcUnit", new Color(0.88f, 0.88f, 0.85f), 0.4f),
                 Tank = MaterialLibrary.Solid("City_WaterTankWhite", new Color(0.9f, 0.9f, 0.88f), 0.35f),
                 TankBlue = MaterialLibrary.Solid("City_WaterTankBlue", new Color(0.12f, 0.32f, 0.62f), 0.4f),
-                PalmTrunk = MaterialLibrary.Solid("City_PalmTrunk", new Color(0.36f, 0.29f, 0.22f), 0.15f),
-                PalmFrond = MaterialLibrary.Solid("City_PalmFrond", new Color(0.20f, 0.30f, 0.11f), 0.25f, 0f, true),
+                PalmTrunk = MaterialLibrary.Scanned("City_PalmTrunk", "Concrete034", new Color(0.50f, 0.40f, 0.29f), 0.4f, 1.5f),
+                PalmFrond = MaterialLibrary.PalmFrond(),
+                AsphaltPatch = MaterialLibrary.Scanned("City_AsphaltPatch", "Asphalt031", new Color(0.52f, 0.52f, 0.55f), 0.65f, 0.8f),
+                Manhole = MaterialLibrary.Solid("City_Manhole", new Color(0.10f, 0.10f, 0.10f), 0.45f, 0.85f),
+                Bollard = MaterialLibrary.Solid("City_Bollard", new Color(0.16f, 0.16f, 0.17f), 0.5f, 0.6f),
+                Dish = MaterialLibrary.Solid("City_SatelliteDish", new Color(0.86f, 0.86f, 0.84f), 0.45f, 0.1f, true),
                 PoleMetal = MaterialLibrary.Solid("City_PoleMetal", new Color(0.55f, 0.56f, 0.57f), 0.6f, 0.8f),
                 LampHead = MaterialLibrary.Emissive("City_LampHead", new Color(0.85f, 0.85f, 0.8f), new Color(0.0f, 0.0f, 0.0f), 0.8f),
                 SignalBox = MaterialLibrary.Solid("City_SignalBox", new Color(0.05f, 0.05f, 0.05f), 0.4f),
@@ -61,6 +66,9 @@ namespace Masar.EditorTools
             m.Signs = new Material[signColors.Length];
             for (int i = 0; i < signColors.Length; i++)
                 m.Signs[i] = MaterialLibrary.Emissive($"City_Sign{i}", signColors[i], signColors[i] * 0.35f, 0.5f);
+            // Trunk UVs span the whole height (0..1), so tile the scanned texture along it
+            m.PalmTrunk.SetTextureScale("_BaseMap", new Vector2(2f, 10f));
+            EditorUtility.SetDirty(m.PalmTrunk);
             return m;
         }
     }
@@ -179,6 +187,19 @@ namespace Masar.EditorTools
                 tb.Cylinder(new Vector3(tx, H + 0.3f, tz), 0.7f, 0.7f, 1.5f, 14);
                 batch[m.Metal].Transform = xf;
                 batch[m.Metal].Box(new Vector3(tx - 0.8f, H, tz - 0.8f), new Vector3(tx + 0.8f, H + 0.3f, tz + 0.8f));
+            }
+            // Satellite dishes (a fixture of Jeddah rooftops), on short masts
+            int dishes = rnd.Next(4);
+            for (int d = 0; d < dishes; d++)
+            {
+                float dx = Mathf.Lerp(-hw + 1.5f, hw - 1.5f, (float)rnd.NextDouble());
+                float dz = Mathf.Lerp(-hd + 1.2f, hd - 1.2f, (float)rnd.NextDouble());
+                var mast = batch[m.Metal]; mast.Transform = xf;
+                mast.Box(new Vector3(dx - 0.03f, H, dz - 0.03f), new Vector3(dx + 0.03f, H + 1.1f, dz + 0.03f));
+                var dish = batch[m.Dish];
+                dish.Transform = xf * Matrix4x4.TRS(new Vector3(dx, H + 1.1f, dz), Quaternion.Euler(-55f, (float)rnd.NextDouble() * 60f + 150f, 0f), Vector3.one);
+                dish.Cylinder(Vector3.zero, 0.06f, 0.42f + (float)rnd.NextDouble() * 0.2f, 0.16f, 18, false);
+                dish.Transform = Matrix4x4.identity;
             }
             // A few AC condensers on the roof
             for (int a = 0; a < 3 + rnd.Next(4); a++)
@@ -461,9 +482,10 @@ namespace Masar.EditorTools
                         var prev = strip[i - 1][1];
                         p = prev + dir * (len / n);
                     }
-                    float width = Mathf.Sin(Mathf.Clamp01(t * 1.15f) * Mathf.PI) * 0.55f + 0.04f;
+                    // Half-width of the frond card: the leaflet texture fills it, alpha-clipped
+                    float width = Mathf.Sin(Mathf.Clamp01(t * 1.1f) * Mathf.PI) * 0.85f + 0.08f;
                     Vector3 side = q * Vector3.right * width;
-                    Vector3 fold = Vector3.up * width * 0.25f;                 // V-shaped leaflet fold
+                    Vector3 fold = Vector3.up * width * 0.3f;                  // V-shaped leaflet fold
                     strip.Add(new[] { p - side + fold, p, p + side + fold });
                 }
                 frond.Loft(strip, false);

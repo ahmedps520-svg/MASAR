@@ -37,7 +37,7 @@ namespace Masar.EditorTools
             var tire = MaterialLibrary.Solid("Car_Tire", new Color(0.03f, 0.03f, 0.03f), 0.22f);
             var rimMat = MaterialLibrary.Solid("Car_Rim", new Color(0.62f, 0.63f, 0.66f), 0.78f, 1f);
             var brakeMat = MaterialLibrary.Solid("Car_BrakeDisc", new Color(0.25f, 0.24f, 0.23f), 0.55f, 1f);
-            var interior = MaterialLibrary.Solid("Car_Interior", new Color(0.07f, 0.07f, 0.075f), 0.22f, 0f, true);
+            var interior = MaterialLibrary.Solid("Car_Interior", new Color(0.13f, 0.125f, 0.12f), 0.28f, 0f, true);
             var seatMat = MaterialLibrary.Solid("Car_Seat", new Color(0.42f, 0.37f, 0.31f), 0.15f);
             var headliner = MaterialLibrary.Solid("Car_Headliner", new Color(0.58f, 0.56f, 0.52f), 0.08f, 0f, true);
             var headMat = MaterialLibrary.Emissive("Car_Headlight", new Color(0.9f, 0.9f, 0.93f), Color.black, 0.96f);

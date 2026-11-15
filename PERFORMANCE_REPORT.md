@@ -20,13 +20,32 @@ See TECHNICAL_ARCHITECTURE.md §13: a 16.6 ms frame (60 fps) with a 25 ms fallba
 
 ## Measurements
 
-### Development PC (reference only, not the target)
+### Development PC (reference only, NOT the target)
 
-| Date | Build | Settings | Scene | FPS | CPU main | GPU | Memory | Notes |
-|---|---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — | Pending: Unity not yet installed |
+PC: i5-14600K, RTX 4060 Ti, 32 GB, Windows 11, Direct3D 12. Windows player build, `-masarSmokeTest -masarUncapped`: a 12 s scripted drive down the avenue at 60% throttle (chase camera), with the first 2 s excluded. Window 2420×1440 (the native iPad height of 1668 is clamped by the PC monitor). Measured 2026-11-15 with `tools/perf-tiers.ps1`.
 
-PC: i5-14600K, RTX 4060 Ti, 32 GB, Windows 11.
+| Tier | Render scale | Avg FPS (uncapped) | CPU main | GPU | Draw calls | Triangles | Unity alloc |
+|---|---|---|---|---|---|---|---|
+| Low | 0.60 | 599 | 1.09 ms | **0.68 ms** | 380 | 0.54 M | 230 MB |
+| Medium | 0.72 | 533 | 1.51 ms | **0.91 ms** | 468 | 0.86 M | 234 MB |
+| High | 0.82 | 414 | 1.81 ms | **1.74 ms** | 869 | 1.53 M | 225 MB |
+| Ultra | 1.00 | 358 | 1.88 ms | **2.49 ms** | 1,262 | 2.12 M | 222 MB |
+
+What this proves and what it doesn't:
+- ✅ **Each tier changes the real cost.** GPU time rises 3.7× and draw calls 3.3× from Low to Ultra. Draw calls and triangles change because of the per-building LOD groups responding to each tier's LOD bias (0.6 / 1.0 / 1.5 / 2.0) and the shadow cascade count (1 / 2 / 3 / 4).
+- ✅ The full stack runs in a player build: scripted drive, car upright, HUD and overlay working.
+- ❌ **These numbers say nothing about the iPad.** The RTX 4060 Ti is roughly an order of magnitude faster than the M5's 10-core GPU in raw throughput, with a different architecture (tile-based deferred rendering) and different thermals. The tier defaults (High on iPad) are placeholders until device measurements exist.
+- Earlier run (before LOD/occlusion/polish), Ultra at 1920×1320, frame rate capped: 60 fps, CPU 1.68 ms, GPU 4.10 ms, 1,359 draw calls, 1.99 M triangles.
+
+### Optimization features verified in Phase 0
+
+| Feature | Status | Evidence |
+|---|---|---|
+| Per-building LOD (details culled at distance, then whole building culled) | Working | Draw calls and triangles scale with each tier's LOD bias (table above) |
+| Umbra occlusion culling (baked) | Baked: 457 KB of data, 5 s bake | Effect not yet isolated in a measurement (to do on the device) |
+| Render scale + STP upscaling per tier | Configured | Render scale scales GPU time (table above). STP on iPad must be checked on the device |
+| GPU Resident Drawer | Enabled Medium+ | Not yet verified as active (draw-call counts don't show instancing gains, because every building mesh is unique) |
+| Mipmap streaming budgets per tier | Configured | Not yet measured |
 
 ### iPad Pro M5
 
@@ -51,16 +70,17 @@ Unity 6000.3.28f1, run 2026-11-14 on the development PC. **6/6 passed.**
 
 ### PlayMode: full stack in the TestBlock scene (PhysX, road meshes, kerbs)
 
-Run 2026-11-14 in the Unity editor on the development PC. **1/1 passed.**
+Run in the Unity editor on the development PC. **1/1 passed** on both runs. The second run was on the final polished scene, with bollards, manholes and patches.
 
-| Phase | Result |
-|---|---|
-| Settle on suspension | upright, 4 wheels grounded |
-| 0–60 km/h, full throttle | **5.43 s** |
-| Speed after 8 s | 88 km/h (2nd gear, 6,045 rpm), lateral drift 0.00 m with neutral steering |
-| Full braking from 88 km/h | **32.5 m in 2.65 s** (an ideal μ = 1 stop is 30.5 m) |
-| Left turn, steer −0.6, throttle 0.3, 3.5 s | heading −52° at 12 km/h |
-| Minimum upright (up.y) over the whole run | 0.999 |
+| Phase | Run 1 (2026-11-14) | Run 2 (2026-11-15, final scene) |
+|---|---|---|
+| Settle on suspension | upright, 4 wheels grounded | upright, 4 wheels grounded |
+| 0–60 km/h, full throttle | **5.43 s** | **5.65 s** |
+| Speed after 8 s | 88 km/h (2nd, 6,045 rpm) | 87 km/h (2nd, 5,981 rpm) |
+| Lateral drift, neutral steering | 0.00 m | 0.00 m |
+| Full braking | **32.5 m from 88 km/h** (ideal μ = 1: 30.5 m) | **31.8 m from 87 km/h** |
+| Left turn, steer −0.6, throttle 0.3, 3.5 s | −52° at 12 km/h | −52° at 12 km/h |
+| Minimum upright (up.y) | 0.999 | 0.999 |
 
 Observation: at full throttle the automatic holds each gear close to the 6,000 rpm shift point (1st to about 59 km/h, 2nd to about 92 km/h), which is realistic for wide-open throttle. Part-throttle shift points are lower (2,300 rpm at light throttle).
 

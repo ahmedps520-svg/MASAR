@@ -218,6 +218,10 @@ namespace Masar.EditorTools
                 SetRel(e, "streamingMipmapsActive", true);
                 SetRel(e, "streamingMipmapsMemoryBudget", t.Name == "Low" ? 256f : t.Name == "Medium" ? 512f : 1024f);
                 SetRel(e, "skinWeights", 4);
+                // Every tier must exist on every platform. The URP template excludes its "Mobile" level
+                // from desktop and its "PC" level from iOS. Inherited, that left the iPad with only "Low".
+                var excluded = e.FindPropertyRelative("excludedTargetPlatforms");
+                if (excluded != null) excluded.ClearArray();
             }
             // Platform defaults: desktop Ultra, iPad High (until measured)
             var per = so.FindProperty("m_PerPlatformDefaultQuality");
