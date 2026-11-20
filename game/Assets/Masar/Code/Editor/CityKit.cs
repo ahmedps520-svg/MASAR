@@ -15,7 +15,7 @@ namespace Masar.EditorTools
         public Material PalmTrunk, PalmFrond, PoleMetal, LampHead, SignalBox, SignalRed, SignalAmber, SignalGreen;
         public Material Gate, DomeGreen, Marble;
         public Material AsphaltPatch, Manhole, Bollard, Dish;
-        public Material PalmDead, RoadWear;
+        public Material PalmDead, RoadWear, Grime;
 
         public static CityMaterials Create()
         {
@@ -44,6 +44,7 @@ namespace Masar.EditorTools
                 PalmFrond = MaterialLibrary.PalmLeaflets(),
                 PalmDead = MaterialLibrary.PalmDeadFrond(),
                 RoadWear = MaterialLibrary.RoadWear(),
+                Grime = MaterialLibrary.FacadeGrime(),
                 AsphaltPatch = MaterialLibrary.Scanned("City_AsphaltPatch", "PH_RoadDamaged", new Color(0.82f, 0.82f, 0.84f), 0.75f, 1.0f, 2048),
                 Manhole = MaterialLibrary.Solid("City_Manhole", new Color(0.10f, 0.10f, 0.10f), 0.45f, 0.85f),
                 Bollard = MaterialLibrary.Solid("City_Bollard", new Color(0.16f, 0.16f, 0.17f), 0.5f, 0.6f),
@@ -163,12 +164,21 @@ namespace Masar.EditorTools
                     bool balcony = balconyRow && (b % 2 == 1 || bays <= 3);
                     WindowCell(batch, m, plaster, xf, x0, x0 + bayW, y0, y0 + s.FloorHeight, hd, balcony ? 2.2f : 1.5f, balcony ? 2.3f : 1.45f, balcony ? 0.1f : 0.95f);
                     if (balcony) Balcony(batch, m, plaster, xf, x0 + 0.2f, x0 + bayW - 0.2f, y0, hd);
-                    else if (rnd.NextDouble() < s.AcChance) AcUnit(batch, m, xf, x0 + bayW * 0.5f + 1.05f, y0 + 0.5f, hd);
+                    else if (rnd.NextDouble() < s.AcChance) AcUnit(batch, m, xf, x0 + bayW * 0.5f + 1.05f, y0 + 0.5f, hd, s.GroundHeight + 0.2f);
                 }
                 // Floor band (slab edge) for horizontal rhythm
                 batch[plaster].Transform = xf;
                 batch[plaster].Box(new Vector3(-hw - 0.05f, y0 - 0.12f, hd), new Vector3(hw + 0.05f, y0 + 0.06f, hd + 0.08f), 2f);
+                // Rain drips washed off the slab edge (kept above the window heads of the floor below,
+                // and never over the shop sign band)
+                if ((f > 0 || !s.Shops) && rnd.NextDouble() < 0.75)
+                {
+                    var g = batch[m.Grime]; g.Transform = xf;
+                    float len = 0.3f + 0.35f * (float)rnd.NextDouble(), u = (float)rnd.NextDouble() * 8f;
+                    Grime(g, -hw, hw, y0 - 0.12f - len, y0 - 0.12f, hd + GrimeOffset + 0.003f, GrimeDrip, u, u + W / 8f);
+                }
             }
+            WeatherFace(batch, m, xf, W, s.Shops ? s.GroundHeight : 0f, H, hd, !s.Shops, s.Seed);
 
             // Side and back faces: fewer, smaller windows
             SideFaces(batch, m, plaster, xf, W, D, s, rnd);
@@ -216,7 +226,7 @@ namespace Masar.EditorTools
                 float az = Mathf.Lerp(-hd + 1f, hd - 1.5f, (float)rnd.NextDouble());
                 ac.Box(new Vector3(ax - 0.45f, H, az - 0.3f), new Vector3(ax + 0.45f, H + 0.7f, az + 0.3f));
             }
-            foreach (var mat in new[] { plaster, m.Stone, m.WindowGlass, m.Frame, m.Metal, m.AcUnit, m.Tank, m.TankBlue, m.ShopGlass })
+            foreach (var mat in new[] { plaster, m.Stone, m.WindowGlass, m.Frame, m.Metal, m.AcUnit, m.Tank, m.TankBlue, m.ShopGlass, m.Grime })
                 batch[mat].Transform = Matrix4x4.identity;
         }
 
@@ -252,6 +262,14 @@ namespace Masar.EditorTools
             f.Box(new Vector3(cx - t * 0.5f, oy0, z - depth), new Vector3(cx + t * 0.5f, oy1, z - depth + 0.06f));
             // Sill
             w.Box(new Vector3(ox0 - 0.08f, oy0 - 0.06f, z - 0.02f), new Vector3(ox1 + 0.08f, oy0, z + 0.06f));
+            // Dust washed off the sill by rain: the classic dark streaks below every window
+            if (sill > 0.3f)
+            {
+                var gr = batch[m.Grime]; gr.Transform = xf;
+                float r = Rand01(cx, oy0 + z, 7), len = 0.35f + 0.6f * r;
+                Grime(gr, ox0 - 0.08f, ox1 + 0.08f, Mathf.Max(y0 + 0.02f, oy0 - 0.06f - len), oy0 - 0.06f, z + GrimeOffset,
+                      GrimeDrip, r * 7f, r * 7f + (openW + 0.16f) / 8f);
+            }
         }
 
         private static void Balcony(MeshBatch batch, CityMaterials m, Material wall, Matrix4x4 xf, float x0, float x1, float y, float z)
@@ -269,13 +287,57 @@ namespace Masar.EditorTools
             }
         }
 
-        private static void AcUnit(MeshBatch batch, CityMaterials m, Matrix4x4 xf, float x, float y, float z)
+        private static void AcUnit(MeshBatch batch, CityMaterials m, Matrix4x4 xf, float x, float y, float z, float minY)
         {
             var a = batch[m.AcUnit]; a.Transform = xf;
             a.Box(new Vector3(x - 0.42f, y, z + 0.02f), new Vector3(x + 0.42f, y + 0.58f, z + 0.32f));
             var b = batch[m.Metal]; b.Transform = xf;
             b.Box(new Vector3(x - 0.38f, y - 0.06f, z), new Vector3(x - 0.34f, y, z + 0.32f));
             b.Box(new Vector3(x + 0.34f, y - 0.06f, z), new Vector3(x + 0.38f, y, z + 0.32f));
+            // Condensate and rust stain running down the wall from the unit
+            var g = batch[m.Grime]; g.Transform = xf;
+            float r = Rand01(x, y + z, 3), len = 1.0f + 1.4f * r;
+            float x0 = x - 0.12f - 0.1f * r, x1 = x + 0.12f + 0.1f * r;
+            Grime(g, x0, x1, Mathf.Max(minY, y - len), y + 0.1f, z + GrimeOffset, GrimeStreak, 0f, 1f);
+        }
+
+        // ------------------------------------------------------------------ weathering
+        // Alpha-blended overlay quads on the facade grime atlas (MaterialLibrary.FacadeGrime).
+        // Weathering follows where water and dust actually go: down from every ledge, up from the ground.
+
+        private const int GrimeBase = 0, GrimeDrip = 1, GrimeStreak = 2, GrimeMacro = 3;
+        /// <summary>Distance in front of the wall: enough to avoid z-fighting at range, too small to see parallax.</summary>
+        private const float GrimeOffset = 0.025f;
+
+        private static float Rand01(float a, float b, int s)
+        {
+            float v = Mathf.Sin(a * 12.9898f + b * 78.233f + s * 37.719f) * 43758.5453f;
+            return v - Mathf.Floor(v);
+        }
+
+        /// <summary>Front-facing (+Z) overlay rectangle mapped onto one atlas row, U from u0 to u1.</summary>
+        private static void Grime(MeshBuilder g, float x0, float x1, float y0, float y1, float z, int row, float u0, float u1)
+        {
+            if (x1 - x0 < 1e-3f || y1 - y0 < 1e-3f) return;
+            float v0 = (row + 0.025f) * 0.25f, v1 = (row + 0.975f) * 0.25f;
+            g.QuadUV(new Vector3(x1, y0, z), new Vector3(x1, y1, z), new Vector3(x0, y1, z), new Vector3(x0, y0, z),
+                     new Vector2(u1, v0), new Vector2(u1, v1), new Vector2(u0, v1), new Vector2(u0, v0));
+        }
+
+        /// <summary>
+        /// Whole-face weathering (face-local +Z at depth z, centered on x = 0): faint dirt patches,
+        /// a dust band at the base, rain streaks hanging from the parapet top at H + 1.
+        /// </summary>
+        private static void WeatherFace(MeshBatch batch, CityMaterials m, Matrix4x4 xf, float width, float yBottom, float H, float z, bool baseBand, int seed)
+        {
+            var g = batch[m.Grime]; g.Transform = xf;
+            float hw = width * 0.5f, zf = z + GrimeOffset;
+            float r = Rand01(width, z, seed), r2 = Rand01(z, width, seed + 1);
+            Grime(g, -hw, hw, yBottom, H + 1f, zf, GrimeMacro, r, r + width / 16f);
+            if (baseBand) Grime(g, -hw, hw, 0f, 1.0f + 0.6f * r2, zf + 0.002f, GrimeBase, r * 3f, r * 3f + width / 6f);
+            float len = 1.1f + 0.7f * r2;
+            Grime(g, -hw, hw, H + 1f - len, H + 1f, zf + 0.004f, GrimeDrip, r * 5f, r * 5f + width / 8f);
+            g.Transform = Matrix4x4.identity;
         }
 
         private static void ShopFront(MeshBatch batch, CityMaterials m, Matrix4x4 xf, float W, float h, float z, System.Random rnd)
@@ -328,6 +390,7 @@ namespace Masar.EditorTools
         private static void SimpleWindowedFace(MeshBatch batch, CityMaterials m, Material wall, Matrix4x4 xf, float width, float H, float z, Spec s, float ow, float oh)
         {
             float hw = width * 0.5f;
+            WeatherFace(batch, m, xf, width, 0f, H, z, true, s.Seed + Mathf.RoundToInt(z * 10f + width));
             var w = batch[wall]; w.Transform = xf;
             FaceRect(w, -hw, hw, 0f, s.GroundHeight, z);
             int bays = Mathf.Max(1, Mathf.RoundToInt(width / 4.5f));
@@ -384,13 +447,30 @@ namespace Masar.EditorTools
             // Gate pillars
             st.Box(new Vector3(gate0 - 0.45f, 0f, hd - 0.35f), new Vector3(gate0, wallH + 0.5f, hd + 0.1f));
             st.Box(new Vector3(gate1, 0f, hd - 0.35f), new Vector3(gate1 + 0.45f, wallH + 0.5f, hd + 0.1f));
+            // Compound wall weathering on the four outer faces: dust splash at the base, drips under
+            // the coping. The front skips the gate opening.
+            var gr = batch[m.Grime];
+            for (int side = 0; side < 4; side++)
+            {
+                float yaw = side * 90f;
+                float half = side % 2 == 0 ? hw : hd, depth = side % 2 == 0 ? hd : hw;
+                gr.Transform = xf * Matrix4x4.Rotate(Quaternion.Euler(0f, yaw, 0f));
+                float r = Rand01(half, depth + side, seed), zf = depth + GrimeOffset;
+                float splash = 0.8f + 0.5f * r, drip = 0.5f + 0.6f * Rand01(depth, half + side, seed + 5);
+                var spans = side == 0 ? new[] { (-half, gate0 - 0.45f), (gate1 + 0.45f, half) } : new[] { (-half, half) };
+                foreach (var (a, b) in spans)
+                {
+                    Grime(gr, a, b, 0f, splash, zf, GrimeBase, a / 6f + r, b / 6f + r);
+                    Grime(gr, a, b, wallH - drip, wallH, zf + 0.002f, GrimeDrip, a / 8f + r * 3f, b / 8f + r * 3f);
+                }
+            }
 
             // House: two floors, set back from the gate
             float vw = plotW * 0.62f, vd = plotD * 0.48f;
             var spec = new Spec { Width = vw, Depth = vd, Floors = 1, FloorHeight = 3.4f, GroundHeight = 3.6f, Shops = false, PlasterIndex = System.Array.IndexOf(m.Plaster, plaster), Seed = seed + 7, BalconyChance = 0.6f, AcChance = 0.8f, StoneGround = rnd.NextDouble() < 0.5 };
             Vector3 housePos = plotCenter + Quaternion.Euler(0f, yawDeg, 0f) * new Vector3(0f, 0f, -plotD * 0.12f);
             Apartment(batch, m, housePos, yawDeg, spec);
-            foreach (var mat in new[] { plaster, m.Stone, m.Gate }) batch[mat].Transform = Matrix4x4.identity;
+            foreach (var mat in new[] { plaster, m.Stone, m.Gate, m.Grime }) batch[mat].Transform = Matrix4x4.identity;
         }
 
         // ------------------------------------------------------------------ mosque

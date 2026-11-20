@@ -509,8 +509,11 @@ namespace Masar.EditorTools
             var core = new List<Renderer>();
             foreach (var g in batch.Flush(root, name, MeshDir, collider: false))
             {
-                MarkStatic(g, occluder: true);
                 var r = g.GetComponent<Renderer>();
+                // Transparent weathering overlays: no shadows, and never an occluder
+                bool overlay = r.sharedMaterial != null && r.sharedMaterial.name.StartsWith("City_FacadeGrime");
+                MarkStatic(g, occluder: !overlay);
+                if (overlay) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 all.Add(r);
                 if (!IsDetailMaterial(r.sharedMaterial)) core.Add(r);
             }

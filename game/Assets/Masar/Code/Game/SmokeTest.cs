@@ -68,6 +68,10 @@ namespace Masar.Game
                     foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
                         if (r.gameObject.name.StartsWith("RoadWear")) r.enabled = false;
                     break;
+                case "grime":
+                    foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                        if (r.gameObject.name.Contains("City_FacadeGrime")) r.enabled = false;
+                    break;
                 case "detail":
                     foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
                         foreach (var m in r.sharedMaterials)
@@ -104,7 +108,7 @@ namespace Masar.Game
             }
             float duration = float.TryParse(Arg("-masarSmokeSeconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : 10f;
             string tag = QualitySettings.names[QualitySettings.GetQualityLevel()];
-            // A/B cost measurement: "-masarOff stp,ssao,palms,wear,detail,sky" switches features off
+            // A/B cost measurement: "-masarOff stp,ssao,palms,wear,grime,detail,sky" switches features off
             string off = Arg("-masarOff");
             if (!string.IsNullOrEmpty(off))
             {

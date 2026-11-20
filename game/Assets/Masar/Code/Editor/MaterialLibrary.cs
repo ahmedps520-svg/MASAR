@@ -377,6 +377,104 @@ namespace Masar.EditorTools
             return m;
         }
 
+        /// <summary>
+        /// Facade weathering atlas: 4 rows of 256 px (V), tileable along U. Each row fades to zero
+        /// alpha at its top and bottom texels so mip levels don't bleed between rows.
+        ///   row 0: dust and dirt band rising from the ground (strongest at the bottom)
+        ///   row 1: rain drips hanging from a top edge (sills, slab bands, parapets)
+        ///   row 2: one stain streak (water and rust below a split-AC unit), centered on U
+        ///   row 3: large faint dirt patches with vertical rain wash, for whole faces
+        /// Used by BuildingKit as alpha-blended overlay quads a few centimeters in front of the wall.
+        /// </summary>
+        public static Material FacadeGrime()
+        {
+            var tex = SaveGenerated("FacadeGrimeAtlas", 512, 1024, (x, y) =>
+            {
+                float u = x / 512f; int row = y / 256; float t = (y % 256) / 255f;
+                float edge = Mathf.Clamp01(Mathf.Min(t, 1f - t) / 0.02f);
+                Color c; float a;
+                switch (row)
+                {
+                    case 0:
+                    {
+                        float n = TileNoise(u, t, 8, 4, 101), f = TileNoise(u, t, 48, 2, 103);
+                        float h = 1f - t;
+                        a = Mathf.Pow(h, 1.7f) * (0.40f + 0.60f * n) + 0.18f * Mathf.Pow(h, 5f) * f;
+                        a = Mathf.Clamp01(a) * 0.60f;
+                        c = Color.Lerp(new Color(0.44f, 0.37f, 0.28f), new Color(0.30f, 0.25f, 0.19f), f);
+                        break;
+                    }
+                    case 1:
+                    {
+                        // Distinct drip columns, each with its own position, width, length and strength,
+                        // in two layers (broad stains + thin runs). The atlas tile spans about 5-7 m of wall.
+                        float d = 1f - t;                                               // distance below the edge
+                        float streak = Mathf.Max(DripLayer(u, d, 22, 211, 1f), 0.7f * DripLayer(u, d, 53, 223, 0.45f));
+                        float band = Mathf.Exp(-d / 0.05f);
+                        float grain = 0.75f + 0.25f * TileNoise(u, t, 32, 2, 117);
+                        a = Mathf.Clamp01(band * 0.6f + streak * grain) * 0.85f;
+                        c = Color.Lerp(new Color(0.20f, 0.18f, 0.16f), new Color(0.33f, 0.28f, 0.22f), d);
+                        break;
+                    }
+                    case 2:
+                    {
+                        float wig = (TileNoise(0.5f, t, 4, 2, 121) - 0.5f) * 0.10f;
+                        float w = 0.12f + 0.16f * (1f - t);                              // spreads as it runs down
+                        float g = Mathf.Exp(-Mathf.Pow((u - 0.5f - wig) / w, 2f));
+                        float fade = Mathf.Pow(t, 0.5f);                                 // strongest at the drip point
+                        float n = 0.65f + 0.35f * TileNoise(u, t, 12, 3, 123);
+                        a = Mathf.Clamp01(g * fade * n * 1.25f) * 0.85f;
+                        c = Color.Lerp(new Color(0.30f, 0.20f, 0.12f), new Color(0.22f, 0.19f, 0.16f), 1f - t);
+                        break;
+                    }
+                    default:
+                    {
+                        float n = TileNoise(u, t, 3, 4, 131);
+                        float wash = TileNoise(u, t * 0.125f, 48, 2, 137);
+                        float blot = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.40f, 0.72f, n));
+                        a = Mathf.Clamp01(blot * 0.34f * (0.65f + 0.35f * wash) + 0.08f * wash);
+                        c = new Color(0.36f, 0.30f, 0.23f);
+                        break;
+                    }
+                }
+                c.a = a * edge;
+                return c;
+            }, true, TextureWrapMode.Repeat, true);
+            // Matte, no reflections: a glossy overlay would catch the sky (see RoadWear)
+            var m = Glass("City_FacadeGrime", Color.white, 0.05f, false);
+            m.SetFloat("_SpecularHighlights", 0f);
+            m.SetFloat("_EnvironmentReflections", 0f);
+            m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            m.SetTexture("_BaseMap", tex);
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent - 60;
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        /// <summary>
+        /// One layer of rain drips: n columns across the tile; each column gets a hashed center jitter,
+        /// width, length (fraction of the row height) and strength. d = distance below the top edge (0..1).
+        /// </summary>
+        private static float DripLayer(float u, float d, int n, int seed, float maxLen)
+        {
+            float best = 0f;
+            int ci = Mathf.FloorToInt(u * n);
+            for (int k = -1; k <= 1; k++)
+            {
+                int i = ((ci + k) % n + n) % n;
+                float center = (ci + k + 0.5f + (Hash(i, 1, seed) - 0.5f) * 0.6f) / n;
+                float width = (0.12f + 0.30f * Hash(i, 2, seed)) / n;
+                float len = maxLen * (0.15f + 0.85f * Hash(i, 3, seed) * Hash(i, 4, seed));
+                float strength = 0.35f + 0.65f * Hash(i, 5, seed);
+                if (d > len) continue;
+                float across = Mathf.Exp(-Mathf.Pow((u - center) / width, 2f));
+                float along = Mathf.Pow(1f - d / len, 0.6f);
+                best = Mathf.Max(best, across * along * strength);
+            }
+            return best;
+        }
+
         /// <summary>Road paint worn by traffic and sun: alpha-clipped noise gives chipped edges and holes.</summary>
         public static Material WornPaint(string name, Color color)
         {

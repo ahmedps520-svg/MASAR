@@ -51,6 +51,7 @@ namespace Masar.EditorTools
                 new View { Name = "07_mosque", Pos = new Vector3(40f, 2f, -48f), LookAt = new Vector3(72f, 12f, -80f), Fov = 60f },
                 new View { Name = "08_villa_street", Pos = new Vector3(-60f, 1.7f, -126f), LookAt = new Vector3(-10f, 3f, -118f), Fov = 60f },
                 new View { Name = "09_aerial", Pos = new Vector3(-150f, 70f, 60f), LookAt = new Vector3(0f, 0f, -50f), Fov = 50f },
+                new View { Name = "12_facade_closeup", Pos = new Vector3(-55f, 1.7f, -12f), LookAt = new Vector3(-45f, 12f, -28f), Fov = 62f },
                 new View { Name = "11_palm_closeup", Pos = new Vector3(-18f, 1.7f, -6.5f), LookAt = new Vector3(-6f, 6.5f, 0f), Fov = 58f },
                 new View { Name = "10_car_side", Pos = c + Vector3.Cross(Vector3.up, fwd) * -5.5f + Vector3.up * 1.1f + fwd * 0.5f, LookAt = c + Vector3.up * 0.7f, Fov = 45f },
             };

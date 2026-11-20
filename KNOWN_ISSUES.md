@@ -24,7 +24,7 @@ Status labels: **Working**: implemented and tested. **Prototype**: implemented, 
 | P5 | Shop signs are blank colored panels | Placeholder | Deliberate: no invented brands. Real signage art later |
 | P6 | **Improved 2026-11-19:** date palms are now procedural geometry: scanned bark trunk with boot relief, 36–45 fronds with folded leaflets, dead-frond skirts, 6 variants × 3 LODs. No wind animation, no date clusters | Prototype | Month 3 vegetation pass: wind sway (vertex shader), date clusters, ground shrubs |
 | P7 | **Improved 2026-11-19:** lighting is a CC0 HDRI sky (Poly Haven) with the sun aligned to it, trilight ambient with warm ground bounce, fog matched to the HDRI horizon, SSAO. Still a single time of day, no lightmaps or APV | Prototype | Month 2: APV lighting scenarios, time of day |
-| P8 | Building facades are clean plaster: no grime, staining, streaks under AC units or window sills | Prototype | Next realism step: facade weathering (decals or a second UV-set grime mask) |
+| P8 | **Improved 2026-11-20:** facades get weathering overlays placed where dirt really collects: rain drips under every sill, slab band and parapet, rust and condensate stains under split-AC units, a dust band at the base of walls, faint dirt patches across whole faces. Villa compound walls too. Still missing: sun bleaching, cracks, posters and wiring, shop-front grime | Prototype | Month 3: authored facade kits with baked weathering. The overlay system stays for variation |
 
 ## Not implemented (planned)
 
