@@ -40,7 +40,7 @@ namespace Masar.EditorTools
         public static readonly Tier[] Tiers =
         {
             new Tier { Name = "Low",    RenderScale = 0.60f, ShadowDistance = 60f,  Cascades = 1, ShadowRes = 1024, SoftShadows = false, Ssao = false, Hdr = false, Msaa = 1, Stp = false, AdditionalLights = 4,  LodBias = 0.6f, TextureMipLimit = 1, GpuResidentDrawer = false },
-            new Tier { Name = "Medium", RenderScale = 0.72f, ShadowDistance = 90f,  Cascades = 2, ShadowRes = 2048, SoftShadows = true,  Ssao = false, Hdr = true,  Msaa = 1, Stp = true,  AdditionalLights = 8,  LodBias = 1.0f, TextureMipLimit = 0, GpuResidentDrawer = true },
+            new Tier { Name = "Medium", RenderScale = 0.72f, ShadowDistance = 90f,  Cascades = 2, ShadowRes = 2048, SoftShadows = true,  Ssao = false, Hdr = true,  Msaa = 1, Stp = false, AdditionalLights = 8, LodBias = 1.0f, TextureMipLimit = 0, GpuResidentDrawer = true },
             new Tier { Name = "High",   RenderScale = 0.82f, ShadowDistance = 130f, Cascades = 3, ShadowRes = 2048, SoftShadows = true,  Ssao = true,  Hdr = true,  Msaa = 1, Stp = true,  AdditionalLights = 16, LodBias = 1.5f, TextureMipLimit = 0, GpuResidentDrawer = true },
             new Tier { Name = "Ultra",  RenderScale = 1.00f, ShadowDistance = 180f, Cascades = 4, ShadowRes = 4096, SoftShadows = true,  Ssao = true,  Hdr = true,  Msaa = 1, Stp = true,  AdditionalLights = 32, LodBias = 2.0f, TextureMipLimit = 0, GpuResidentDrawer = true },
         };
@@ -162,7 +162,18 @@ namespace Masar.EditorTools
             foreach (var f in r.rendererFeatures)
             {
                 if (f == null) continue;
-                if (f.GetType().Name.Contains("ScreenSpaceAmbientOcclusion")) { f.SetActive(ssao); foundSsao = true; EditorUtility.SetDirty(f); }
+                if (f.GetType().Name.Contains("ScreenSpaceAmbientOcclusion"))
+                {
+                    f.SetActive(ssao);
+                    foundSsao = true;
+                    // Stronger, wider contact occlusion: grounds facades, ledges, AC units and the car
+                    var fso = new SerializedObject(f);
+                    Set(fso, "m_Settings.Intensity", 1.5f);
+                    Set(fso, "m_Settings.Radius", 0.55f);
+                    Set(fso, "m_Settings.DirectLightingStrength", 0.3f);
+                    fso.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(f);
+                }
             }
             if (ssao && !foundSsao) Debug.LogWarning($"[MASAR] {name}: the template renderer has no SSAO feature. SSAO stays off.");
             EditorUtility.SetDirty(r);
@@ -274,7 +285,9 @@ namespace Masar.EditorTools
             {
                 case bool b: p.boolValue = b; break;
                 case int i:
-                    if (p.propertyType == SerializedPropertyType.Enum) p.enumValueIndex = i;
+                    // Enums are written by VALUE, not declaration index: URP's MsaaQuality is
+                    // {Disabled=1, _2x=2, ...}, so index 1 silently meant 2x MSAA (which also disabled STP).
+                    if (p.propertyType == SerializedPropertyType.Enum) p.intValue = i;
                     else if (p.propertyType == SerializedPropertyType.Boolean) p.boolValue = i != 0;
                     else p.intValue = i;
                     break;

@@ -22,8 +22,9 @@ Status labels: **Working**: implemented and tested. **Prototype**: implemented, 
 | P3 | The test block is a hand-designed layout, not a real Jeddah location | Placeholder | Month 3: OSM-derived road network for the chosen neighborhood |
 | P4 | Traffic-signal heads cycle on a timer | Placeholder (visual prop) | Month 3/4: real signal controllers bound to the road graph. Nothing reads these props |
 | P5 | Shop signs are blank colored panels | Placeholder | Deliberate: no invented brands. Real signage art later |
-| P6 | Palms use solid-color fronds (no leaf texture) | Placeholder | Month 3 vegetation pass |
-| P7 | Lighting is a single afternoon setup: sun, procedural sky, fog, baked reflection probes. No lightmaps or APV | Prototype | Month 2: APV lighting scenarios, time of day |
+| P6 | **Improved 2026-11-19:** date palms are now procedural geometry: scanned bark trunk with boot relief, 36–45 fronds with folded leaflets, dead-frond skirts, 6 variants × 3 LODs. No wind animation, no date clusters | Prototype | Month 3 vegetation pass: wind sway (vertex shader), date clusters, ground shrubs |
+| P7 | **Improved 2026-11-19:** lighting is a CC0 HDRI sky (Poly Haven) with the sun aligned to it, trilight ambient with warm ground bounce, fog matched to the HDRI horizon, SSAO. Still a single time of day, no lightmaps or APV | Prototype | Month 2: APV lighting scenarios, time of day |
+| P8 | Building facades are clean plaster: no grime, staining, streaks under AC units or window sills | Prototype | Next realism step: facade weathering (decals or a second UV-set grime mask) |
 
 ## Not implemented (planned)
 
@@ -47,6 +48,8 @@ Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school
 | T13 | Occlusion culling effect not isolated | The data bakes (457 KB), but its draw-call saving hasn't been measured separately |
 | T14 | **Fixed 2026-11-15:** UI layout bugs found by `-masarUiCapture` | The HUD overlapped the gas pedal, panels were see-through, the perf overlay drew over panels and the title, "HANDBRAKE" wrapped mid-word, and the touch gear selector needed three taps to reach D. All fixed and recaptured |
 | T15 | Touch controls are layout-verified only | The PC has no touchscreen. Multi-touch (steer + pedal at once), pedal feel and button sizes need testing on the iPad |
+| T16 | **Fixed 2026-11-20:** MSAA was 2x on every tier, which silently disabled STP | The setup helper wrote enum fields by declaration index, and URP's `MsaaQuality` starts at `Disabled = 1`, so "1" meant 2x. The player logged "Disabling TAA and STP because MSAA is on". Enums are now written by value. Earlier PC tier numbers were measured with MSAA 2x and no STP |
+| T17 | PC GPU timings at 200+ fps are noisy (±0.3–0.5 ms, one outlier run at 7.3 ms vs 4.6 ms typical) | The GPU isn't fully loaded and its clocks vary. Compare runs from the same session only. The iPad numbers are the ones that count |
 | T10 | Review screenshots are edit-mode renders | `MasarScreenshots` renders the scene at rest. The PlayMode drive test and the player smoke test cover motion |
 
 ## Licensing and legal

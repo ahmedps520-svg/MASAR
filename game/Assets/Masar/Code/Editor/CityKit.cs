@@ -15,19 +15,20 @@ namespace Masar.EditorTools
         public Material PalmTrunk, PalmFrond, PoleMetal, LampHead, SignalBox, SignalRed, SignalAmber, SignalGreen;
         public Material Gate, DomeGreen, Marble;
         public Material AsphaltPatch, Manhole, Bollard, Dish;
+        public Material PalmDead, RoadWear;
 
         public static CityMaterials Create()
         {
             var m = new CityMaterials
             {
-                Asphalt = MaterialLibrary.Scanned("City_Asphalt", "Asphalt031", new Color(0.78f, 0.78f, 0.80f), 0.7f, 0.8f),
+                Asphalt = MaterialLibrary.Scanned("City_Asphalt", "PH_Asphalt02", new Color(0.90f, 0.90f, 0.92f), 0.8f, 1.0f, 2048),
                 Pavers = MaterialLibrary.Scanned("City_Pavers", "PavingStones138", new Color(0.92f, 0.86f, 0.78f), 0.8f),
                 Concrete = MaterialLibrary.Scanned("City_Concrete", "Concrete034", new Color(0.86f, 0.84f, 0.80f), 0.8f),
                 Ground = MaterialLibrary.Scanned("City_Ground", "Ground093C", new Color(0.95f, 0.88f, 0.76f), 0.8f),
                 KerbYellow = MaterialLibrary.Solid("City_KerbYellow", new Color(0.86f, 0.66f, 0.08f), 0.35f),
                 KerbBlack = MaterialLibrary.Solid("City_KerbBlack", new Color(0.04f, 0.04f, 0.04f), 0.3f),
-                PaintWhite = MaterialLibrary.Solid("City_RoadPaintWhite", new Color(0.86f, 0.86f, 0.84f), 0.45f),
-                PaintYellow = MaterialLibrary.Solid("City_RoadPaintYellow", new Color(0.88f, 0.68f, 0.12f), 0.45f),
+                PaintWhite = MaterialLibrary.WornPaint("City_RoadPaintWhite", new Color(0.84f, 0.84f, 0.81f)),
+                PaintYellow = MaterialLibrary.WornPaint("City_RoadPaintYellow", new Color(0.86f, 0.64f, 0.12f)),
                 Stone = MaterialLibrary.Scanned("City_StoneCladding", "Concrete034", new Color(0.93f, 0.85f, 0.72f), 0.7f),
                 // Slightly metallic so facades pick up sky and street reflections from the probes
                 // (dielectric glass at 4% reflectance read as black holes in the first review renders)
@@ -39,9 +40,11 @@ namespace Masar.EditorTools
                 AcUnit = MaterialLibrary.Solid("City_AcUnit", new Color(0.88f, 0.88f, 0.85f), 0.4f),
                 Tank = MaterialLibrary.Solid("City_WaterTankWhite", new Color(0.9f, 0.9f, 0.88f), 0.35f),
                 TankBlue = MaterialLibrary.Solid("City_WaterTankBlue", new Color(0.12f, 0.32f, 0.62f), 0.4f),
-                PalmTrunk = MaterialLibrary.Scanned("City_PalmTrunk", "Concrete034", new Color(0.50f, 0.40f, 0.29f), 0.4f, 1.5f),
-                PalmFrond = MaterialLibrary.PalmFrond(),
-                AsphaltPatch = MaterialLibrary.Scanned("City_AsphaltPatch", "Asphalt031", new Color(0.52f, 0.52f, 0.55f), 0.65f, 0.8f),
+                PalmTrunk = MaterialLibrary.Scanned("City_PalmTrunk", "PH_PalmBark", new Color(0.80f, 0.68f, 0.54f), 0.6f, 1.3f, 2048),
+                PalmFrond = MaterialLibrary.PalmLeaflets(),
+                PalmDead = MaterialLibrary.PalmDeadFrond(),
+                RoadWear = MaterialLibrary.RoadWear(),
+                AsphaltPatch = MaterialLibrary.Scanned("City_AsphaltPatch", "PH_RoadDamaged", new Color(0.82f, 0.82f, 0.84f), 0.75f, 1.0f, 2048),
                 Manhole = MaterialLibrary.Solid("City_Manhole", new Color(0.10f, 0.10f, 0.10f), 0.45f, 0.85f),
                 Bollard = MaterialLibrary.Solid("City_Bollard", new Color(0.16f, 0.16f, 0.17f), 0.5f, 0.6f),
                 Dish = MaterialLibrary.Solid("City_SatelliteDish", new Color(0.86f, 0.86f, 0.84f), 0.45f, 0.1f, true),
@@ -66,9 +69,12 @@ namespace Masar.EditorTools
             m.Signs = new Material[signColors.Length];
             for (int i = 0; i < signColors.Length; i++)
                 m.Signs[i] = MaterialLibrary.Emissive($"City_Sign{i}", signColors[i], signColors[i] * 0.35f, 0.5f);
-            // Trunk UVs span the whole height (0..1), so tile the scanned texture along it
-            m.PalmTrunk.SetTextureScale("_BaseMap", new Vector2(2f, 10f));
-            EditorUtility.SetDirty(m.PalmTrunk);
+            // Close-up surface detail: road grain at about 1.2 m, plaster and concrete grain on facades and kerbs
+            MaterialLibrary.AddDetail(m.Asphalt, "PH_Asphalt02", 6f, 1f, 0.45f);
+            MaterialLibrary.AddDetail(m.AsphaltPatch, "PH_Asphalt02", 5f, 1f, 0.4f);
+            foreach (var p in m.Plaster) MaterialLibrary.AddDetail(p, "Concrete034", 3f, 0.7f, 0.5f);
+            MaterialLibrary.AddDetail(m.Stone, "Concrete034", 2.5f, 0.8f, 0.6f);
+            MaterialLibrary.AddDetail(m.Concrete, "Concrete034", 3f, 0.8f, 0.5f);
             return m;
         }
     }

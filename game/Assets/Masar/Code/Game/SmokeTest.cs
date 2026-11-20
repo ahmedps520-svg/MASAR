@@ -43,6 +43,46 @@ namespace Masar.Game
             return i >= 0 && i + 1 < a.Length ? a[i + 1] : null;
         }
 
+        private static void SwitchOff(string feature)
+        {
+            var urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            switch (feature)
+            {
+                case "stp":
+                    if (urp != null) urp.upscalingFilter = UnityEngine.Rendering.Universal.UpscalingFilterSelection.Auto;
+                    break;
+                case "ssao":
+                    var field = typeof(UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset).GetField("m_RendererDataList",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (urp != null && field?.GetValue(urp) is UnityEngine.Rendering.Universal.ScriptableRendererData[] list)
+                        foreach (var data in list)
+                            if (data != null)
+                                foreach (var feat in data.rendererFeatures)
+                                    if (feat != null && feat.GetType().Name.Contains("AmbientOcclusion")) feat.SetActive(false);
+                    break;
+                case "palms":
+                    var palms = GameObject.Find("DatePalms");
+                    if (palms != null) palms.SetActive(false);
+                    break;
+                case "wear":
+                    foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                        if (r.gameObject.name.StartsWith("RoadWear")) r.enabled = false;
+                    break;
+                case "detail":
+                    foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                        foreach (var m in r.sharedMaterials)
+                            if (m != null) m.DisableKeyword("_DETAIL_MULX2");
+                    break;
+                case "sky":
+                    RenderSettings.skybox = null;
+                    break;
+                default:
+                    Debug.LogWarning($"[MASAR smoke] unknown -masarOff feature '{feature}'");
+                    return;
+            }
+            Debug.Log($"[MASAR smoke] switched off: {feature}");
+        }
+
         private IEnumerator Start()
         {
             string dir = Application.persistentDataPath;
@@ -64,6 +104,13 @@ namespace Masar.Game
             }
             float duration = float.TryParse(Arg("-masarSmokeSeconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : 10f;
             string tag = QualitySettings.names[QualitySettings.GetQualityLevel()];
+            // A/B cost measurement: "-masarOff stp,ssao,palms,wear,detail,sky" switches features off
+            string off = Arg("-masarOff");
+            if (!string.IsNullOrEmpty(off))
+            {
+                foreach (var f in off.Split(',')) SwitchOff(f.Trim().ToLowerInvariant());
+                tag += "_no-" + off.Replace(',', '-');
+            }
             var car = FindFirstObjectByType<VehicleController>();
             if (car == null) { Debug.LogError("[MASAR smoke] no vehicle found"); Application.Quit(2); yield break; }
             var driver = new ScriptedDriver();

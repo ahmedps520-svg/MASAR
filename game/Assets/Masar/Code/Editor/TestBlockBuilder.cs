@@ -85,12 +85,19 @@ namespace Masar.EditorTools
             BuildRoads(roads, m);
             BuildMarkings(roads, m);
             BuildRoadDetails(roads, m);
+            var wear = new MeshBatch();
+            BuildRoadWear(wear, m);
             BuildRaised(raised, m);
             // The 5 km ground plane is collidable but excluded from occlusion (it would inflate the bake volume)
             foreach (var g in ground.Flush(world, "Ground", MeshDir, collider: true))
                 GameObjectUtility.SetStaticEditorFlags(g, StaticEditorFlags.ReflectionProbeStatic);
             foreach (var g in roads.Flush(world, "Roads", MeshDir, collider: true)) MarkStatic(g, occluder: false);
             foreach (var g in raised.Flush(world, "Sidewalks", MeshDir, collider: true)) MarkStatic(g, occluder: false);
+            foreach (var g in wear.Flush(world, "RoadWear", MeshDir, collider: false))
+            {
+                MarkStatic(g, occluder: false);
+                g.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
 
             BuildStreetFurniture(world, m);
             BuildBuildings(world, m);
@@ -371,6 +378,9 @@ namespace Masar.EditorTools
             var batch = new MeshBatch();
             var colliders = new List<(Vector3, float, float)>();
             int seed = 1;
+            PalmKit.BuildVariants();
+            var palms = new GameObject("DatePalms").transform;
+            palms.SetParent(parent, false);
             // Median palms every 12 m and double-arm lights every 36 m
             for (float x = -Extent + 6f; x < Extent - 6f; x += 12f)
             {
@@ -384,8 +394,7 @@ namespace Masar.EditorTools
                 }
                 else
                 {
-                    BuildingKit.DatePalm(batch, m, new Vector3(x, MedianKerb, 0f), seed++);
-                    colliders.Add((new Vector3(x, MedianKerb, 0f), 0.3f, 6f));
+                    PalmKit.Place(palms, m, new Vector3(x, MedianKerb, 0f), seed++);
                 }
             }
             // Sidewalk lights along the block streets (single arm, facing the road)
@@ -395,8 +404,8 @@ namespace Masar.EditorTools
                 BuildingKit.StreetLight(batch, m, new Vector3(-CrossX + CrossHalf + 1.5f, Kerb, z), false, 90f);
             }
             // Palms in front of the villas and in the small park
-            for (float x = -90f; x <= 90f; x += 18f) BuildingKit.DatePalm(batch, m, new Vector3(x, Kerb, SouthZ + CrossHalf + 1.5f), seed++);
-            for (float x = -20f; x <= 30f; x += 9f) for (float z = -78f; z <= -50f; z += 9f) BuildingKit.DatePalm(batch, m, new Vector3(x + (seed % 3), Kerb, z), seed++);
+            for (float x = -90f; x <= 90f; x += 18f) PalmKit.Place(palms, m, new Vector3(x, Kerb, SouthZ + CrossHalf + 1.5f), seed++);
+            for (float x = -20f; x <= 30f; x += 9f) for (float z = -78f; z <= -50f; z += 9f) PalmKit.Place(palms, m, new Vector3(x + (seed % 3), Kerb, z), seed++);
 
             foreach (var g in batch.Flush(parent, "Furniture", MeshDir, collider: false)) MarkStatic(g, occluder: false);
             foreach (var (p, r, h) in colliders)
@@ -528,6 +537,48 @@ namespace Masar.EditorTools
                    n.StartsWith("City_SatelliteDish");
         }
 
+        /// <summary>
+        /// Tire-wear tracks: two darker, slightly polished wheel paths per lane, which every real road
+        /// has. Transparent overlay quads with soft edges and patchy intensity, broken at junctions.
+        /// </summary>
+        private static void BuildRoadWear(MeshBatch b, CityMaterials m)
+        {
+            var w = b[m.RoadWear];
+            const float y = 0.003f, half = 0.42f, seg = 24f;
+            bool Junction(float x) => Mathf.Abs(Mathf.Abs(x) - CrossX) < CrossHalf + CrossWalk + 2f;
+            // Avenue: 3 lanes each side, along X
+            foreach (int side in new[] { -1, 1 })
+                for (int lane = 0; lane < 3; lane++)
+                {
+                    float zc = side * (MedianHalf + 1.75f + lane * 3.5f);
+                    foreach (float off in new[] { -0.85f, 0.85f })
+                    {
+                        float z = zc + off;
+                        for (float x = -Extent; x < Extent; x += seg)
+                        {
+                            float x1 = Mathf.Min(Extent, x + seg);
+                            if (Junction(x) || Junction(x1)) continue;
+                            w.QuadUV(new Vector3(x, y, z - half), new Vector3(x, y, z + half), new Vector3(x1, y, z + half), new Vector3(x1, y, z - half),
+                                     new Vector2(0, x / 20f), new Vector2(1, x / 20f), new Vector2(1, x1 / 20f), new Vector2(0, x1 / 20f));
+                        }
+                    }
+                }
+            // Cross streets: one lane each way, along Z
+            foreach (float cx in new[] { -CrossX, CrossX })
+                foreach (float lc in new[] { -1.75f, 1.75f })
+                    foreach (float off in new[] { -0.85f, 0.85f })
+                    {
+                        float x = cx + lc + off;
+                        foreach (var (z0, z1) in new[] { (SouthZ + CrossHalf + 3f, -CarriageOuter - 4f), (CarriageOuter + 4f, 80f) })
+                            for (float z = z0; z < z1; z += seg)
+                            {
+                                float ze = Mathf.Min(z1, z + seg);
+                                w.QuadUV(new Vector3(x + half, y, z), new Vector3(x - half, y, z), new Vector3(x - half, y, ze), new Vector3(x + half, y, ze),
+                                         new Vector2(1, z / 20f), new Vector2(0, z / 20f), new Vector2(0, ze / 20f), new Vector2(1, ze / 20f));
+                            }
+                    }
+        }
+
         /// <summary>Street-level wear and furniture: asphalt repair patches, manhole covers, sidewalk bollards.</summary>
         private static void BuildRoadDetails(MeshBatch b, CityMaterials m)
         {
@@ -634,36 +685,63 @@ namespace Masar.EditorTools
 
         private static void BuildLighting()
         {
-            // Late-afternoon sun from the west-southwest (Red Sea side), warm and hazy
+            // Photographed sky (Poly Haven HDRI, CC0). The sun direction is read from the HDRI's
+            // brightest pixel so shadows agree with the sky, and fog takes the HDRI's horizon color.
+            const string hdriPath = "Assets/Masar/Art/HDRI/kloofendal_43d_clear_puresky_2k.hdr";
+            var hdriImp = (TextureImporter)AssetImporter.GetAtPath(hdriPath);
+            hdriImp.isReadable = true; hdriImp.mipmapEnabled = false; hdriImp.wrapModeU = TextureWrapMode.Repeat;
+            hdriImp.wrapModeV = TextureWrapMode.Clamp; hdriImp.maxTextureSize = 2048;
+            hdriImp.textureCompression = TextureImporterCompression.CompressedHQ;
+            hdriImp.SaveAndReimport();
+            var hdri = AssetDatabase.LoadAssetAtPath<Texture2D>(hdriPath);
+            Vector3 sunDir = new Vector3(-0.5f, 0.6f, -0.6f).normalized;
+            Color horizon = new Color(0.78f, 0.80f, 0.82f);
+            if (hdri != null)
+            {
+                var px = hdri.GetPixels();
+                int w = hdri.width, h = hdri.height, best = 0; float bestL = 0f;
+                for (int k = 0; k < px.Length; k++) { float l = px[k].r + px[k].g + px[k].b; if (l > bestL) { bestL = l; best = k; } }
+                float u = (best % w + 0.5f) / w, v = (best / w + 0.5f) / h;
+                float theta = (1f - v) * Mathf.PI, phi = (0.5f - u) * 2f * Mathf.PI;   // Unity Panoramic mapping
+                sunDir = new Vector3(Mathf.Sin(theta) * Mathf.Cos(phi), Mathf.Cos(theta), Mathf.Sin(theta) * Mathf.Sin(phi)).normalized;
+                Color acc = Color.black; int row = Mathf.RoundToInt(h * 0.515f);
+                for (int x = 0; x < w; x++) acc += px[row * w + x];
+                horizon = acc / w;
+                float mx = Mathf.Max(horizon.r, Mathf.Max(horizon.g, horizon.b));
+                if (mx > 0f) horizon = horizon / mx * 0.80f;
+                Debug.Log($"[MASAR] HDRI sun dir {sunDir} (elevation {Mathf.Asin(sunDir.y) * Mathf.Rad2Deg:F0} deg), horizon {horizon}");
+            }
+
             var sunGo = new GameObject("Sun");
             var sun = sunGo.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.90f, 0.76f);
-            sun.intensity = 2.3f;
+            sun.color = new Color(1f, 0.95f, 0.88f);
+            sun.intensity = 2.6f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.92f;
-            sunGo.transform.rotation = Quaternion.Euler(30f, 62f, 0f);
+            sun.shadowStrength = 0.95f;
+            sunGo.transform.rotation = Quaternion.LookRotation(-sunDir, Vector3.up);
             sunGo.AddComponent<UniversalAdditionalLightData>();
             RenderSettings.sun = sun;
 
-            var sky = new Material(Shader.Find("Skybox/Procedural"));
-            sky.SetFloat("_SunSize", 0.035f);
-            sky.SetFloat("_SunSizeConvergence", 6f);
-            sky.SetFloat("_AtmosphereThickness", 1.05f);
-            sky.SetColor("_SkyTint", new Color(0.50f, 0.56f, 0.66f));
-            sky.SetColor("_GroundColor", new Color(0.66f, 0.62f, 0.56f));
-            sky.SetFloat("_Exposure", 1.2f);
-            AssetDatabase.CreateAsset(sky, $"{MaterialLibrary.MatRoot}/Sky_JeddahAfternoon.mat");
+            var sky = new Material(Shader.Find("Skybox/Panoramic"));
+            sky.SetTexture("_MainTex", hdri);
+            sky.SetFloat("_Mapping", 1f);      // latitude-longitude
+            sky.SetFloat("_ImageType", 0f);    // 360
+            sky.SetFloat("_Exposure", 1.0f);
+            sky.SetFloat("_Rotation", 0f);
+            AssetDatabase.CreateAsset(sky, $"{MaterialLibrary.MatRoot}/Sky_HDRI_Clear.mat");
             RenderSettings.skybox = sky;
-            RenderSettings.ambientMode = AmbientMode.Skybox;
-            RenderSettings.ambientIntensity = 1.0f;
+            // Ambient: cool sky above, warm bounce from sunlit sand and plaster below (as in Jeddah)
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.50f, 0.60f, 0.76f) * 1.05f;
+            RenderSettings.ambientEquatorColor = new Color(0.70f, 0.67f, 0.62f);
+            RenderSettings.ambientGroundColor = new Color(0.58f, 0.49f, 0.38f);
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
             RenderSettings.reflectionIntensity = 1.0f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.0018f;
-            RenderSettings.fogColor = new Color(0.78f, 0.77f, 0.74f);
-
+            RenderSettings.fogDensity = 0.0016f;
+            RenderSettings.fogColor = horizon;
             // Reflection probes along the avenue and over the block
             int i = 0;
             for (float x = -200f; x <= 200f; x += 100f)

@@ -28,17 +28,19 @@ namespace Masar.EditorTools
         }
 
         /// <summary>Textured PBR material from an ambientCG set. tile = meters per texture repeat.</summary>
-        public static Material Scanned(string name, string setId, Color tint, float smoothnessScale = 1f, float normalScale = 1f)
+        public static Material Scanned(string name, string setId, Color tint, float smoothnessScale = 1f, float normalScale = 1f, int maxSize = 1024)
         {
             string path = $"{MatRoot}/{name}.mat";
             var m = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (m == null) { m = new Material(Lit); AssetDatabase.CreateAsset(m, path); }
             m.shader = Lit;
             string dir = $"{TexRoot}/{setId}";
-            var color = Load($"{dir}/{setId}_1K-JPG_Color.jpg", false);
-            var normal = Load($"{dir}/{setId}_1K-JPG_NormalGL.jpg", true);
-            var mask = PackSmoothness(dir, setId);
-            var ao = Load($"{dir}/{setId}_1K-JPG_AmbientOcclusion.jpg", false, linear: true);
+            // ambientCG sets use "<id>_1K-JPG_<Map>.jpg", Poly Haven sets (PH_*) use "<id>_<Map>.jpg"
+            string pre = File.Exists($"{dir}/{setId}_Color.jpg") ? $"{dir}/{setId}_" : $"{dir}/{setId}_1K-JPG_";
+            var color = Load(pre + "Color.jpg", false, maxSize: maxSize);
+            var normal = Load(pre + "NormalGL.jpg", true, maxSize: maxSize);
+            var mask = PackSmoothness(dir, setId, maxSize);
+            var ao = Load(pre + "AmbientOcclusion.jpg", false, linear: true, maxSize: maxSize);
             m.SetColor("_BaseColor", tint);
             if (color) m.SetTexture("_BaseMap", color);
             if (normal) { m.SetTexture("_BumpMap", normal); m.SetFloat("_BumpScale", normalScale); m.EnableKeyword("_NORMALMAP"); }
@@ -201,9 +203,204 @@ namespace Masar.EditorTools
             return m;
         }
 
+        // ------------------------------------------------------------------ realism helpers
+
+        private const string GenTex = "Assets/Masar/Generated";
+
+        /// <summary>
+        /// Adds URP Lit's detail layer from a scanned set: a grey-normalized copy of its color map
+        /// (multiply x2) plus its normal map, tiled `detailTiling` times per base-map repeat.
+        /// The base map carries the large-scale look (cracks, stains), and the detail layer keeps the
+        /// surface crisp at the camera, so tiling isn't obvious from either distance.
+        /// </summary>
+        public static void AddDetail(Material m, string setId, float detailTiling, float albedoStrength = 1f, float normalStrength = 0.6f)
+        {
+            string dir = $"{TexRoot}/{setId}";
+            string pre = File.Exists($"{dir}/{setId}_Color.jpg") ? $"{dir}/{setId}_" : $"{dir}/{setId}_1K-JPG_";
+            string outPath = $"{GenTex}/{setId}_DetailAlbedo.png";
+            if (!File.Exists(outPath) && File.Exists(pre + "Color.jpg"))
+            {
+                var src = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
+                src.LoadImage(File.ReadAllBytes(pre + "Color.jpg"));
+                int w = Mathf.Min(1024, src.width), h = Mathf.Min(1024, src.height);
+                var px = new Color32[w * h];
+                double sum = 0;
+                var lum = new float[w * h];
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        var c = src.GetPixelBilinear((x + 0.5f) / w, (y + 0.5f) / h);
+                        float l = 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+                        lum[y * w + x] = l; sum += l;
+                    }
+                float mean = (float)(sum / lum.Length);
+                for (int i = 0; i < lum.Length; i++)
+                {
+                    byte v = (byte)Mathf.Clamp(Mathf.RoundToInt(127.5f * lum[i] / Mathf.Max(0.02f, mean)), 0, 255);
+                    px[i] = new Color32(v, v, v, 255);
+                }
+                var dst = new Texture2D(w, h, TextureFormat.RGBA32, true, true);
+                dst.SetPixels32(px);
+                File.WriteAllBytes(outPath, dst.EncodeToPNG());
+                Object.DestroyImmediate(src); Object.DestroyImmediate(dst);
+                AssetDatabase.ImportAsset(outPath);
+                var imp = (TextureImporter)AssetImporter.GetAtPath(outPath);
+                imp.sRGBTexture = false; imp.maxTextureSize = 1024; imp.anisoLevel = 8; imp.streamingMipmaps = true;
+                imp.SaveAndReimport();
+            }
+            var detailAlbedo = AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
+            var detailNormal = Load(pre + "NormalGL.jpg", true, maxSize: 2048);
+            if (detailAlbedo) { m.SetTexture("_DetailAlbedoMap", detailAlbedo); m.SetFloat("_DetailAlbedoMapScale", albedoStrength); }
+            if (detailNormal) { m.SetTexture("_DetailNormalMap", detailNormal); m.SetFloat("_DetailNormalMapScale", normalStrength); }
+            m.SetTextureScale("_DetailAlbedoMap", new Vector2(detailTiling, detailTiling));
+            m.EnableKeyword("_DETAIL_MULX2");
+            EditorUtility.SetDirty(m);
+        }
+
+        /// <summary>Multi-octave value noise in 0..1, tileable over `period` cells.</summary>
+        public static float TileNoise(float x, float y, int period, int octaves, int seed)
+        {
+            float sum = 0f, amp = 1f, norm = 0f;
+            for (int o = 0; o < octaves; o++)
+            {
+                int p = period << o;
+                float fx = x * p, fy = y * p;
+                int x0 = Mathf.FloorToInt(fx), y0 = Mathf.FloorToInt(fy);
+                float tx = fx - x0, ty = fy - y0;
+                tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+                float a = Hash(x0 % p, y0 % p, seed + o), b = Hash((x0 + 1) % p, y0 % p, seed + o);
+                float c = Hash(x0 % p, (y0 + 1) % p, seed + o), d = Hash((x0 + 1) % p, (y0 + 1) % p, seed + o);
+                sum += amp * Mathf.Lerp(Mathf.Lerp(a, b, tx), Mathf.Lerp(c, d, tx), ty);
+                norm += amp; amp *= 0.5f;
+            }
+            return sum / norm;
+        }
+
+        private static float Hash(int x, int y, int s)
+        {
+            unchecked
+            {
+                uint h = (uint)(x * 374761393 + y * 668265263 + s * 2147483647);
+                h = (h ^ (h >> 13)) * 1274126177u;
+                return ((h ^ (h >> 16)) & 0xFFFFFF) / 16777215f;
+            }
+        }
+
+        private static Texture2D SaveGenerated(string name, int w, int h, System.Func<int, int, Color> f, bool srgb, TextureWrapMode wrap, bool alpha)
+        {
+            string path = $"{GenTex}/{name}.png";
+            if (!File.Exists(path))
+            {
+                var tex = new Texture2D(w, h, TextureFormat.RGBA32, false, !srgb);
+                var px = new Color[w * h];
+                for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) px[y * w + x] = f(x, y);
+                tex.SetPixels(px);
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+                var imp = (TextureImporter)AssetImporter.GetAtPath(path);
+                imp.sRGBTexture = srgb; imp.wrapMode = wrap; imp.alphaIsTransparency = alpha; imp.mipmapEnabled = true;
+                imp.anisoLevel = 4; imp.streamingMipmaps = true;
+                imp.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        /// <summary>
+        /// Date-palm leaflet palette: X runs along a leaflet (base to tip), Y picks a per-leaflet
+        /// variation row. Colors follow real Phoenix dactylifera leaflets: glaucous grey-green,
+        /// yellower at the base, slightly sun-bleached or brown at the tips.
+        /// </summary>
+        public static Material PalmLeaflets()
+        {
+            var tex = SaveGenerated("PalmLeafletPalette", 128, 64, (x, y) =>
+            {
+                float t = x / 127f, row = y / 63f;
+                float n = TileNoise(t, row, 8, 3, 11);
+                Color baseC = Color.Lerp(new Color(0.30f, 0.34f, 0.14f), new Color(0.17f, 0.25f, 0.12f), Mathf.SmoothStep(0f, 0.35f, t));
+                Color mid = Color.Lerp(new Color(0.12f, 0.20f, 0.10f), new Color(0.20f, 0.27f, 0.15f), row);   // deep olive to grey-green
+                Color tip = Color.Lerp(mid, new Color(0.38f, 0.34f, 0.18f), 0.5f);
+                Color c = t < 0.35f ? Color.Lerp(baseC, mid, t / 0.35f) : Color.Lerp(mid, tip, Mathf.Pow(Mathf.InverseLerp(0.75f, 1f, t), 2f));
+                return c * (0.88f + 0.24f * n);
+            }, true, TextureWrapMode.Clamp, false);
+            var m = Solid("City_PalmLeaflets", Color.white, 0.12f, 0f, true);
+            m.SetTexture("_BaseMap", tex);
+            // Matte foliage: no sky reflection sheen (it read as silvery crowns at distance)
+            m.SetFloat("_EnvironmentReflections", 0f);
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        /// <summary>Dry, dead fronds hanging below the crown.</summary>
+        public static Material PalmDeadFrond()
+        {
+            var tex = SaveGenerated("PalmDeadPalette", 128, 64, (x, y) =>
+            {
+                float t = x / 127f, row = y / 63f, n = TileNoise(t, row, 8, 3, 23);
+                return Color.Lerp(new Color(0.46f, 0.36f, 0.22f), new Color(0.62f, 0.52f, 0.36f), row * 0.7f + t * 0.3f) * (0.85f + 0.3f * n);
+            }, true, TextureWrapMode.Clamp, false);
+            // Tinted down: in full sun the straw palette blew out to near-white hanging skirts
+            var m = Solid("City_PalmDeadFrond", new Color(0.66f, 0.60f, 0.54f), 0.08f, 0f, true);
+            m.SetTexture("_BaseMap", tex);
+            m.SetFloat("_EnvironmentReflections", 0f);
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            m.SetFloat("_SpecularHighlights", 0f);
+            m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        /// <summary>
+        /// Tire-wear track overlay: transparent dark, slightly polished strips in the wheel paths.
+        /// U runs across the strip (soft edges), V along it (patchy intensity).
+        /// </summary>
+        public static Material RoadWear()
+        {
+            var tex = SaveGenerated("RoadWearMask", 64, 512, (x, y) =>
+            {
+                float u = x / 63f, v = y / 511f;
+                float edge = Mathf.Exp(-Mathf.Pow((u - 0.5f) / 0.26f, 2f));
+                float along = 0.45f + 0.55f * TileNoise(u * 0.25f, v, 6, 4, 5);
+                return new Color(1f, 1f, 1f, Mathf.Clamp01(edge * along));
+            }, true, TextureWrapMode.Repeat, true);
+            // Low smoothness: a glossy transparent overlay picks up grazing-angle sky reflection (Fresnel)
+            // and turns white, the opposite of tire grime.
+            var m = Glass("City_RoadWear", new Color(0.015f, 0.015f, 0.016f, 0.38f), 0.08f, false);
+            m.SetFloat("_SpecularHighlights", 0f);
+            m.SetFloat("_EnvironmentReflections", 0f);
+            m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            m.SetTexture("_BaseMap", tex);
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent - 50;
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        /// <summary>Road paint worn by traffic and sun: alpha-clipped noise gives chipped edges and holes.</summary>
+        public static Material WornPaint(string name, Color color)
+        {
+            var tex = SaveGenerated("RoadPaintWear", 512, 512, (x, y) =>
+            {
+                float u = x / 512f, v = y / 512f;
+                float big = TileNoise(u, v, 4, 4, 31), fine = TileNoise(u, v, 32, 3, 47);
+                float a = Mathf.Clamp01((big * 0.65f + fine * 0.35f - 0.30f) * 3.2f);
+                float shade = 0.80f + 0.20f * fine;
+                return new Color(shade, shade, shade, a);
+            }, true, TextureWrapMode.Repeat, true);
+            var m = Solid(name, color, 0.35f);
+            m.SetTexture("_BaseMap", tex);
+            m.SetFloat("_AlphaClip", 1f);
+            m.SetFloat("_Cutoff", 0.5f);
+            m.EnableKeyword("_ALPHATEST_ON");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
         // ------------------------------------------------------------------ textures
 
-        private static Texture2D Load(string path, bool normal, bool linear = false)
+        private static Texture2D Load(string path, bool normal, bool linear = false, int maxSize = 1024)
         {
             if (!File.Exists(path)) return null;
             var imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -212,14 +409,14 @@ namespace Masar.EditorTools
                 bool dirty = false;
                 if (normal && imp.textureType != TextureImporterType.NormalMap) { imp.textureType = TextureImporterType.NormalMap; dirty = true; }
                 if (linear && imp.sRGBTexture) { imp.sRGBTexture = false; dirty = true; }
-                if (imp.maxTextureSize != 1024) { imp.maxTextureSize = 1024; dirty = true; }
+                if (imp.maxTextureSize != maxSize) { imp.maxTextureSize = maxSize; dirty = true; }
                 if (!imp.streamingMipmaps) { imp.streamingMipmaps = true; dirty = true; }
                 if (imp.anisoLevel != 8) { imp.anisoLevel = 8; dirty = true; }
                 var ios = imp.GetPlatformTextureSettings("iPhone");
-                if (!ios.overridden || ios.format != (normal ? TextureImporterFormat.ASTC_4x4 : TextureImporterFormat.ASTC_6x6))
+                if (!ios.overridden || ios.maxTextureSize != maxSize || ios.format != (normal ? TextureImporterFormat.ASTC_4x4 : TextureImporterFormat.ASTC_6x6))
                 {
                     ios.overridden = true;
-                    ios.maxTextureSize = 1024;
+                    ios.maxTextureSize = maxSize;
                     ios.format = normal ? TextureImporterFormat.ASTC_4x4 : TextureImporterFormat.ASTC_6x6;
                     imp.SetPlatformTextureSettings(ios);
                     dirty = true;
@@ -230,9 +427,9 @@ namespace Masar.EditorTools
         }
 
         /// <summary>Builds an RGBA mask: R = 0 (non-metal), A = 1 - roughness. Cached as a PNG next to the source.</summary>
-        private static Texture2D PackSmoothness(string dir, string setId)
+        private static Texture2D PackSmoothness(string dir, string setId, int maxSize = 1024)
         {
-            string rough = $"{dir}/{setId}_1K-JPG_Roughness.jpg";
+            string rough = File.Exists($"{dir}/{setId}_Roughness.jpg") ? $"{dir}/{setId}_Roughness.jpg" : $"{dir}/{setId}_1K-JPG_Roughness.jpg";
             string outPath = $"{dir}/{setId}_MetallicSmoothness.png";
             if (!File.Exists(rough)) return null;
             if (!File.Exists(outPath))
@@ -257,7 +454,7 @@ namespace Masar.EditorTools
             {
                 imp.sRGBTexture = false;
                 imp.streamingMipmaps = true;
-                imp.maxTextureSize = 1024;
+                imp.maxTextureSize = maxSize;
                 imp.SaveAndReimport();
             }
             return AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
