@@ -110,6 +110,13 @@ namespace Masar.EditorTools
                 var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
                 if (existing != null) AssetDatabase.DeleteAsset(path);
                 AssetDatabase.CreateAsset(mesh, path);
+                // Render-only meshes need no CPU copy at runtime: halves their memory (collider meshes stay readable)
+                if (!collider)
+                {
+                    var so = new SerializedObject(mesh);
+                    var rd = so.FindProperty("m_IsReadable");
+                    if (rd != null) { rd.boolValue = false; so.ApplyModifiedPropertiesWithoutUndo(); }
+                }
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
                 go.AddComponent<MeshRenderer>().sharedMaterial = kv.Key;
                 if (collider) go.AddComponent<MeshCollider>().sharedMesh = mesh;

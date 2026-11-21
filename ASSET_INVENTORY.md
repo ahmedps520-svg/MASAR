@@ -41,7 +41,7 @@ Added on 2026-11-20 at the owner's request: the owner downloaded these from Sket
 
 | ID | Asset | Source | License | Status |
 |---|---|---|---|---|
-| C001 | 12 Mixamo characters (Ch01, Ch08, Ch12, Ch17, Ch22, Ch23, Ch28, Ch31, Ch33, Ch37, Ch41, Remy) + the "Walking" animation; "Start Walking" and "Sitting Laughing" were downloaded but are unused | https://www.mixamo.com, downloaded by the owner 2026-11-21 into `Art/Characters/Imported/` | Adobe Mixamo terms: royalty-free use in games (commercial and non-commercial); no redistribution of the files themselves | ✓ Used for pedestrians. **Not in git** (`Art/Characters/` is gitignored, because the repo is public). They reach the iPad only inside the compiled app. Textures capped at 1024 px |
+| C001 | 12 Mixamo characters (Ch01, Ch08, Ch12, Ch17, Ch22, Ch23, Ch28, Ch31, Ch33, Ch37, Ch41, Remy) + the "Walking" animation. Unused: "Start Walking", "Sitting Laughing", and Ch08 (a ragged, zombie-like look, out of place in a street crowd) | https://www.mixamo.com, downloaded by the owner 2026-11-21 into `Art/Characters/Imported/` | Adobe Mixamo terms: royalty-free use in games (commercial and non-commercial); no redistribution of the files themselves | ✓ Used for pedestrians. **Not in git** (`Art/Characters/` is gitignored, because the repo is public). They reach the iPad only inside the compiled app. Textures capped at 1024 px |
 
 ## Textures & materials
 

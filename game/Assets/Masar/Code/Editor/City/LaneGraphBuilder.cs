@@ -36,6 +36,11 @@ namespace Masar.EditorTools.City
         readonly List<LaneTmp> _lanes = new List<LaneTmp>();
         readonly List<RoadNetwork.Junction> _junctionList = new List<RoadNetwork.Junction>();
         readonly Dictionary<long, int> _junctionIndex = new Dictionary<long, int>();
+        readonly Dictionary<int, int> _clusterSize = new Dictionary<int, int>(), _clusterRep = new Dictionary<int, int>();
+
+        /// <summary>Multi-node intersections (divided roads) act as one junction: one key for all their nodes.</summary>
+        long Key(long node) => _net.Junctions.TryGetValue(node, out var j) && _clusterSize[j.Cluster] > 1 ? -1_000_000L - j.Cluster : node;
+        bool SameCluster(long a, long b) => _net.Junctions.TryGetValue(a, out var ja) && _net.Junctions.TryGetValue(b, out var jb) && ja.Cluster == jb.Cluster && _clusterSize[ja.Cluster] > 1;
         public int Connectors, RoadLanes, Signals;
 
         public LaneGraphBuilder(RoadNetwork net, RoadSurface surf, Rect area) { _net = net; _surf = surf; _area = area; }
@@ -43,6 +48,11 @@ namespace Masar.EditorTools.City
         public CityGraph Build(Vector3 spawn, float spawnYaw)
         {
             foreach (var j in _net.Junctions.Values) { _junctionIndex[j.NodeId] = _junctionList.Count; _junctionList.Add(j); }
+            foreach (var j in _junctionList)
+            {
+                _clusterSize[j.Cluster] = _clusterSize.TryGetValue(j.Cluster, out var n) ? n + 1 : 1;
+                if (!_clusterRep.ContainsKey(j.Cluster)) _clusterRep[j.Cluster] = _junctionIndex[j.NodeId];
+            }
             BuildRoadLanes();
             BuildConnectors();
             BuildConflicts();
@@ -94,6 +104,7 @@ namespace Masar.EditorTools.City
                     int a = cuts[c], b = cuts[c + 1];
                     var pts = road.P.GetRange(a, b - a + 1);
                     long na = road.NodeIds[a], nb = road.NodeIds[b];
+                    if (SameCluster(na, nb)) continue;   // inside an intersection (median crossing): covered by connectors
                     float len = RoadNetwork.Length(pts);
                     float trimA = _net.Junctions.TryGetValue(na, out var ja) ? ja.Radius : 0f;
                     float trimB = _net.Junctions.TryGetValue(nb, out var jb) ? jb.Radius : 0f;
@@ -150,9 +161,10 @@ namespace Masar.EditorTools.City
             for (int i = 0; i < _lanes.Count; i++)
             {
                 var l = _lanes[i];
-                if (!arriving.TryGetValue(l.EndNode, out var a)) arriving[l.EndNode] = a = new List<int>();
+                long ek = Key(l.EndNode), sk = Key(l.StartNode);
+                if (!arriving.TryGetValue(ek, out var a)) arriving[ek] = a = new List<int>();
                 a.Add(i);
-                if (!departing.TryGetValue(l.StartNode, out var d)) departing[l.StartNode] = d = new List<int>();
+                if (!departing.TryGetValue(sk, out var d)) departing[sk] = d = new List<int>();
                 d.Add(i);
             }
             int roadLaneCount = _lanes.Count;
@@ -160,7 +172,8 @@ namespace Masar.EditorTools.City
             {
                 long node = kv.Key;
                 if (!departing.TryGetValue(node, out var outs)) continue;
-                bool isJunction = _junctionIndex.TryGetValue(node, out int jIdx);
+                int jIdx;
+                bool isJunction = node <= -1_000_000L && node > -1_000_000_000L ? (jIdx = _clusterRep[(int)(-1_000_000L - node)]) >= 0 : _junctionIndex.TryGetValue(node, out jIdx);
                 // Group arriving lanes by approach direction (same road edge = same direction + same end)
                 foreach (int ia in kv.Value)
                 {

@@ -22,6 +22,147 @@ namespace Masar.EditorTools.City
         const string PrefabDir = "Assets/Masar/Prefabs/Pedestrians";
         const string ControllerPath = "Assets/Masar/Prefabs/Pedestrians/MixamoWalk.controller";
 
+        /// <summary>
+        /// Mixamo files come in different units, so characters imported as giants or children: scale each
+        /// to a real adult height and stand it on the ground.
+        /// </summary>
+        static void NormalizeHeight(GameObject body, float targetHeight)
+        {
+            var rs = body.GetComponentsInChildren<Renderer>();
+            if (rs.Length == 0) return;
+            var b = rs[0].bounds;
+            foreach (var r in rs) b.Encapsulate(r.bounds);
+            if (b.size.y < 0.01f) return;
+            float s = targetHeight / b.size.y;
+            body.transform.localScale = body.transform.localScale * s;
+            rs = body.GetComponentsInChildren<Renderer>();
+            b = rs[0].bounds;
+            foreach (var r in rs) b.Encapsulate(r.bounds);
+            body.transform.position += Vector3.up * (body.transform.parent.position.y - b.min.y);
+            Debug.Log($"[MASAR] Mixamo {body.name}: scaled x{s:F3} to {targetHeight:F2} m");
+        }
+
+        /// <summary>
+        /// URP Lit materials built from the extracted Mixamo textures (Diffuse, Normal; Glossiness as
+        /// smoothness). The automatic FBX material conversion left them white. Material slot i uses
+        /// texture tile 1001 + i unless the original material already names its texture.
+        /// </summary>
+        static void AssignMaterials(GameObject body, string fbxPath)
+        {
+            string name = Path.GetFileNameWithoutExtension(fbxPath);
+            string texDir = Path.GetDirectoryName(fbxPath).Replace('\\', '/') + "/_tex_" + name;
+            string matDir = "Assets/Masar/Prefabs/Pedestrians/Materials";
+            if (!AssetDatabase.IsValidFolder(matDir)) AssetDatabase.CreateFolder("Assets/Masar/Prefabs/Pedestrians", "Materials");
+            var lit = Shader.Find("Universal Render Pipeline/Lit");
+            Texture2D Tex(string suffix, string tile, bool normal)
+            {
+                foreach (var g in AssetDatabase.FindAssets("t:Texture2D", new[] { texDir }))
+                {
+                    string tp = AssetDatabase.GUIDToAssetPath(g);
+                    string f = Path.GetFileNameWithoutExtension(tp);
+                    if (!f.Contains("_" + tile + "_") || !f.EndsWith(suffix)) continue;
+                    var ti = (TextureImporter)AssetImporter.GetAtPath(tp);
+                    if (normal && ti.textureType != TextureImporterType.NormalMap) { ti.textureType = TextureImporterType.NormalMap; ti.SaveAndReimport(); }
+                    return AssetDatabase.LoadAssetAtPath<Texture2D>(tp);
+                }
+                return null;
+            }
+            foreach (var r in body.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                var mats = r.sharedMaterials;
+                var mesh = r.sharedMesh;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    // Which texture set this slot uses:
+                    // 1. by name: materials named after a part ("Remy_Body" -> Remy_Body_Diffuse)
+                    // 2. by UV tile (UDIM): Mixamo's "Ch.." characters put each part in its own UV tile
+                    //    (u in [k, k+1] -> tile 1001 + k), and several material slots share a tile
+                    string tile = null;
+                    // Part names may be plural in the model ("Tops") and singular in the textures ("Top")
+                    var names = (mats[i] != null ? mats[i].name : "") + "_" + r.gameObject.name;
+                    foreach (var part in names.Split('_', ':', ' ', '.', '(', ')'))
+                    {
+                        if (part.Length < 3) continue;
+                        foreach (var cand in new[] { part, part.TrimEnd('s', 'S'), char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant() })
+                            if (cand.Length >= 3 && Tex("Diffuse", cand, false) != null) { tile = cand; break; }
+                        if (tile != null) break;
+                    }
+                    if (tile == null && mesh != null && i < mesh.subMeshCount)
+                    {
+                        var sm = mesh.GetSubMesh(i);
+                        var uvs = new System.Collections.Generic.List<Vector2>();
+                        mesh.GetUVs(0, uvs);
+                        if (uvs.Count > 0 && sm.vertexCount > 0)
+                        {
+                            Vector2 u = uvs[Mathf.Clamp(sm.firstVertex + sm.vertexCount / 2, 0, uvs.Count - 1)];
+                            tile = (1001 + Mathf.FloorToInt(u.x) + 10 * Mathf.FloorToInt(u.y)).ToString();
+                        }
+                    }
+                    if (tile == null || Tex("Diffuse", tile, false) == null) tile = Tex("Diffuse", "Body", false) != null ? "Body" : "1001";
+                    var diffuse = Tex("Diffuse", tile, false);
+                    var opacity = Tex("Opacity", tile, false);
+                    if (diffuse != null && opacity != null) diffuse = MergeOpacity(diffuse, opacity);
+                    string mp = $"{matDir}/{name}_{tile}.mat";
+                    var mat = AssetDatabase.LoadAssetAtPath<Material>(mp);
+                    if (mat == null) { mat = new Material(lit); AssetDatabase.CreateAsset(mat, mp); }
+                    mat.shader = lit;
+                    if (diffuse != null) { mat.SetTexture("_BaseMap", diffuse); mat.SetTexture("_MainTex", diffuse); }
+                    mat.SetColor("_BaseColor", Color.white);
+                    var normalMap = Tex("Normal", tile, true);
+                    if (normalMap != null) { mat.SetTexture("_BumpMap", normalMap); mat.EnableKeyword("_NORMALMAP"); }
+                    mat.SetFloat("_Smoothness", 0.3f);
+                    mat.SetFloat("_Metallic", 0f);
+                    // Hair and eyelashes use the diffuse alpha: cut out, both sides
+                    string dp = diffuse != null ? AssetDatabase.GetAssetPath(diffuse) : null;
+                    var dti = dp != null ? (TextureImporter)AssetImporter.GetAtPath(dp) : null;
+                    bool alpha = dti != null && dti.DoesSourceTextureHaveAlpha();
+                    mat.SetFloat("_AlphaClip", alpha ? 1f : 0f);
+                    mat.SetFloat("_Cutoff", 0.4f);
+                    mat.SetFloat("_Cull", alpha ? 0f : 2f);
+                    if (alpha) mat.EnableKeyword("_ALPHATEST_ON"); else mat.DisableKeyword("_ALPHATEST_ON");
+                    EditorUtility.SetDirty(mat);
+                    mats[i] = mat;
+                }
+                r.sharedMaterials = mats;
+            }
+        }
+
+        /// <summary>
+        /// Some characters (Remy) ship hair transparency as a separate Opacity map; URP Lit reads it from the
+        /// base map's alpha, so the two are merged once into "*_DiffuseAlpha.png" next to the originals.
+        /// </summary>
+        static Texture2D MergeOpacity(Texture2D diffuse, Texture2D opacity)
+        {
+            string dp = AssetDatabase.GetAssetPath(diffuse);
+            string outPath = dp.Replace("_Diffuse.png", "_DiffuseAlpha.png");
+            if (outPath == dp) return diffuse;
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
+            if (existing != null) return existing;
+            Color32[] Read(Texture2D t, int w, int h)
+            {
+                var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+                Graphics.Blit(t, rt);
+                var prev = RenderTexture.active; RenderTexture.active = rt;
+                var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+                tex.ReadPixels(new Rect(0, 0, w, h), 0, 0); tex.Apply();
+                RenderTexture.active = prev; RenderTexture.ReleaseTemporary(rt);
+                var px = tex.GetPixels32(); Object.DestroyImmediate(tex);
+                return px;
+            }
+            int W = diffuse.width, H = diffuse.height;
+            var c = Read(diffuse, W, H);
+            var a = Read(opacity, W, H);
+            for (int k = 0; k < c.Length; k++) c[k].a = a[k].r;
+            var outTex = new Texture2D(W, H, TextureFormat.RGBA32, false);
+            outTex.SetPixels32(c); outTex.Apply();
+            File.WriteAllBytes(outPath, outTex.EncodeToPNG());
+            Object.DestroyImmediate(outTex);
+            AssetDatabase.ImportAsset(outPath);
+            var ti = (TextureImporter)AssetImporter.GetAtPath(outPath);
+            ti.alphaIsTransparency = true; ti.maxTextureSize = 1024; ti.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
+        }
+
         /// <summary>Embedded 2-4K textures are extracted next to the model and capped at 1024 px (memory on the iPad).</summary>
         static void LimitTextures(string path, ModelImporter imp)
         {
@@ -40,6 +181,9 @@ namespace Masar.EditorTools.City
             }
         }
 
+        [MenuItem("MASAR/Build/Pedestrians (Mixamo)")]
+        public static void Rebuild() => Build();
+
         public static Pedestrian[] Build()
         {
             if (!AssetDatabase.IsValidFolder(Folder)) return null;
@@ -50,7 +194,9 @@ namespace Masar.EditorTools.City
             string Lower(string p) => Path.GetFileNameWithoutExtension(p).ToLowerInvariant();
             string walkPath = fbx.Find(p => IsAnim(p) && Lower(p).Contains("walk") && !Lower(p).Contains("start") && !Lower(p).Contains("stop"))
                               ?? fbx.Find(p => Lower(p).Contains("walk") && !Lower(p).Contains("start") && !Lower(p).Contains("stop"));
-            var characters = fbx.FindAll(p => p != walkPath && !IsAnim(p) && !Lower(p).Contains("walk"));
+            // Characters left out of a Jeddah street crowd (Ch08: ragged, zombie-like look)
+            string[] excluded = { "ch08_nonpbr" };
+            var characters = fbx.FindAll(p => p != walkPath && !IsAnim(p) && !Lower(p).Contains("walk") && System.Array.IndexOf(excluded, Lower(p)) < 0);
             if (walkPath == null || characters.Count == 0)
             {
                 if (fbx.Count > 0) Debug.LogWarning($"[MASAR] Mixamo: need at least one character FBX and one walk FBX (name containing 'walk') in {Folder}; found {fbx.Count} file(s)");
@@ -102,6 +248,9 @@ namespace Masar.EditorTools.City
                 anim.applyRootMotion = false;
                 anim.cullingMode = AnimatorCullingMode.CullCompletely;
                 foreach (var r in body.GetComponentsInChildren<SkinnedMeshRenderer>()) r.updateWhenOffscreen = false;
+                AssignMaterials(body, p);
+                int h = 0; foreach (char ch in Path.GetFileName(p)) h = h * 31 + ch;   // stable per file
+                NormalizeHeight(body, 1.62f + (Mathf.Abs(h) % 100) / 100f * 0.23f);
                 // Not drawn (or animated) once smaller than 3 % of the screen height
                 var lod = root.AddComponent<LODGroup>();
                 lod.SetLODs(new[] { new LOD(0.03f, body.GetComponentsInChildren<Renderer>()) });

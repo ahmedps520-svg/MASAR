@@ -29,7 +29,8 @@ namespace Masar.EditorTools.City
         public readonly List<(Vector3 center, Vector3 size, float yaw)> Colliders = new List<(Vector3, Vector3, float)>();
         public readonly List<Vector3> Palms = new List<Vector3>();
         /// <summary>Simplified building volumes for the far blocks: center, size, yaw, plaster index.</summary>
-        public readonly List<(Vector3 center, Vector3 size, float yaw, int plaster)> Boxes = new List<(Vector3, Vector3, float, int)>();
+        public readonly List<(Vector3 center, Vector3 size, float yaw, Material mat)> Boxes = new List<(Vector3, Vector3, float, Material)>();
+        public int Modern;
         public int Surveyed, SurveyedKit, Generated, GeneratedVillas, Lights;
 
         readonly OsmMap _map;
@@ -141,6 +142,7 @@ namespace Masar.EditorTools.City
                 Geometry.MinAreaRect(poly, out var rc, out var rax, out float rw, out float rd);
                 float fill = area / Mathf.Max(1f, rw * rd);
                 var batch = new MeshBatch();
+                Material surveyedFar = null;
                 // Front of the building: the rectangle side nearest a road
                 FrontFacing(rc, rax, rw, rd, out var fax, out float fw, out float fd, out float yaw);
                 var near = _surf.NearestClass(rc);
@@ -154,6 +156,19 @@ namespace Masar.EditorTools.City
                 {
                     if ((b == "house" || b == "villa" || b == "detached") && levels <= 2 && fw < 40f)
                         BuildingKit.Villa(batch, _m, new Vector3(rc.x, RoadSurface.KerbHeight, rc.y), yaw, fw, fd, _seed++);
+                    else if (levels >= 7 && fw >= 16f && fd >= 14f && _rnd.NextDouble() < 0.6)
+                    {
+                        // Tall surveyed buildings: mostly modern glass towers (Tahlia's skyline)
+                        ModernKit.GlassTower(batch, new Vector3(rc.x, RoadSurface.KerbHeight, rc.y), yaw, fw, fd, Mathf.Max(1, levels - 2), _seed++);
+                        surveyedFar = ModernKit.Materials().Glass[_rnd.Next(4)];
+                        Modern++;
+                    }
+                    else if (b != "house" && _rnd.NextDouble() < (major ? 0.5 : 0.3))
+                    {
+                        ModernKit.Apartment(batch, new Vector3(rc.x, RoadSurface.KerbHeight, rc.y), yaw, fw, fd, levels, major, _seed++);
+                        surveyedFar = ModernKit.Materials().Cladding[_rnd.Next(3)];
+                        Modern++;
+                    }
                     else
                     {
                         var spec = ApartmentSpec(fw, fd, levels, major && b != "house");
@@ -168,7 +183,7 @@ namespace Masar.EditorTools.City
                 Commit(batch, rc);
                 float h = levels * 3.3f + 4.5f;
                 Colliders.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw));
-                Boxes.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw, (int)(w.Id % 4)));
+                Boxes.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw, surveyedFar ?? _m.Plaster[(int)(w.Id % _m.Plaster.Length)]));
                 _occ.FillPolygon(poly);
                 MarkRect(rc, rax, rw, rd);
                 Surveyed++;
@@ -311,17 +326,11 @@ namespace Masar.EditorTools.City
                                 float yaw = Mathf.Atan2(-outward.x, -outward.y) * Mathf.Rad2Deg;   // front (+Z) faces the road
                                 var batch = new MeshBatch();
                                 var c3 = new Vector3(c.x, RoadSurface.KerbHeight, c.y);
-                                int floors = 2;
-                                if (villa) { BuildingKit.Villa(batch, _m, c3, yaw, w, d, _seed++); GeneratedVillas++; }
-                                else
-                                {
-                                    floors = road.Class >= RoadClass.Primary ? 5 + _rnd.Next(5) : road.Class >= RoadClass.Secondary ? 4 + _rnd.Next(4) : major ? 3 + _rnd.Next(3) : 2 + _rnd.Next(3);
-                                    BuildingKit.Apartment(batch, _m, c3, yaw, ApartmentSpec(w, d, floors, major || _rnd.NextDouble() < 0.2));
-                                }
+                                float h = Place(batch, c3, yaw, w, d, road.Class, villa, major || _rnd.NextDouble() < 0.2, out var farMat);
+                                if (villa) GeneratedVillas++;
                                 Commit(batch, c);
-                                float h = villa ? 8f : 4.8f + 3.3f * floors;
                                 Colliders.Add((new Vector3(c.x, RoadSurface.KerbHeight + h * 0.5f, c.y), new Vector3(w, h, d), yaw));
-                                AddBox(new Vector3(c.x, RoadSurface.KerbHeight, c.y), w, d, h, yaw, villa);
+                                AddBox(new Vector3(c.x, RoadSurface.KerbHeight, c.y), w, d, h, yaw, villa, farMat);
                                 MarkRect(c, dir, w, d);
                                 Generated++;
                                 placed = true;
@@ -353,9 +362,44 @@ namespace Masar.EditorTools.City
             p = pts[pts.Count - 1]; dir = Vector2.right;
         }
 
-        void AddBox(Vector3 basePos, float w, float d, float h, float yaw, bool villa)
+        /// <summary>
+        /// One generated building in the style mix of its street: glass towers and modern apartments on the
+        /// main roads, modern and traditional villas on residential streets. Returns the height.
+        /// </summary>
+        float Place(MeshBatch batch, Vector3 c3, float yaw, float w, float d, RoadClass cls, bool villa, bool shops, out Material farMat)
         {
-            int p = _rnd.Next(4);
+            var mp = ModernKit.Materials();
+            double r = _rnd.NextDouble();
+            if (villa)
+            {
+                if (r < 0.5) { ModernKit.Villa(batch, c3, yaw, w, d, _seed++); farMat = mp.Cladding[0]; Modern++; }
+                else { BuildingKit.Villa(batch, _m, c3, yaw, w, d, _seed++); farMat = null; }
+                return 8f;
+            }
+            double tower = cls >= RoadClass.Primary ? 0.45 : cls >= RoadClass.Secondary ? 0.15 : 0.0;
+            double modern = cls >= RoadClass.Primary ? 0.35 : cls >= RoadClass.Secondary ? 0.4 : cls >= RoadClass.Tertiary ? 0.35 : 0.3;
+            if (r < tower && w >= 16f && d >= 14f)
+            {
+                int fl = cls >= RoadClass.Primary ? 8 + _rnd.Next(11) : 6 + _rnd.Next(6);
+                float th = ModernKit.GlassTower(batch, c3, yaw, w, d, fl, _seed++);
+                farMat = mp.Glass[_rnd.Next(mp.Glass.Length)]; Modern++;
+                return th;
+            }
+            int floors = cls >= RoadClass.Primary ? 5 + _rnd.Next(5) : cls >= RoadClass.Secondary ? 4 + _rnd.Next(4) : cls >= RoadClass.Tertiary ? 3 + _rnd.Next(3) : 2 + _rnd.Next(3);
+            if (r < tower + modern)
+            {
+                float ah = ModernKit.Apartment(batch, c3, yaw, w, d, floors, shops, _seed++);
+                farMat = mp.Cladding[_rnd.Next(3)]; Modern++;
+                return ah;
+            }
+            BuildingKit.Apartment(batch, _m, c3, yaw, ApartmentSpec(w, d, floors, shops));
+            farMat = null;
+            return (shops ? 4.8f : 3.8f) + 3.3f * floors;
+        }
+
+        void AddBox(Vector3 basePos, float w, float d, float h, float yaw, bool villa, Material mat = null)
+        {
+            var p = mat ?? _m.Plaster[_rnd.Next(_m.Plaster.Length)];
             if (villa)
             {
                 Boxes.Add((basePos + Vector3.up * 1.45f, new Vector3(w, 2.9f, d), yaw, p));                      // compound wall
@@ -386,13 +430,12 @@ namespace Masar.EditorTools.City
                     var batch = new MeshBatch();
                     var c3 = new Vector3(c.x, RoadSurface.KerbHeight, c.y);
                     bool iv = _rnd.NextDouble() < 0.7;
-                    int fl = 3 + _rnd.Next(3);
-                    if (iv) { BuildingKit.Villa(batch, _m, c3, yaw, w, d, _seed++); GeneratedVillas++; }
-                    else BuildingKit.Apartment(batch, _m, c3, yaw, ApartmentSpec(w - 4f, d - 4f, fl, false));
+                    float bw = iv ? w : w - 4f, bd = iv ? d : d - 4f;
+                    float ih = Place(batch, c3, yaw, bw, bd, RoadClass.Residential, iv, false, out var farMat);
+                    if (iv) GeneratedVillas++;
                     Commit(batch, c);
-                    float ih = iv ? 8f : 3.8f + 3.3f * fl;
-                    Colliders.Add((new Vector3(c.x, RoadSurface.KerbHeight + ih * 0.5f, c.y), new Vector3(iv ? w : w - 4f, ih, iv ? d : d - 4f), yaw));
-                    AddBox(c3, iv ? w : w - 4f, iv ? d : d - 4f, ih, yaw, iv);
+                    Colliders.Add((new Vector3(c.x, RoadSurface.KerbHeight + ih * 0.5f, c.y), new Vector3(bw, ih, bd), yaw));
+                    AddBox(c3, bw, bd, ih, yaw, iv, farMat);
                     MarkRect(c, ax, w, d);
                     Generated++;
                 }

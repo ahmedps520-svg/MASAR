@@ -72,7 +72,22 @@ namespace Masar.EditorTools
                 new View { Name = "08_overhead", Pos = c + Vector3.up * 420f + fwd * 0.1f, LookAt = c, Fov = 60f },
                 new View { Name = "09_junction_ahead", Pos = c + fwd * 120f + rgt * 25f + Vector3.up * 18f, LookAt = c + fwd * 220f, Fov = 60f },
                 new View { Name = "10_car_side", Pos = c + rgt * -5.5f + Vector3.up * 1.1f + fwd * 0.5f, LookAt = c + Vector3.up * 0.7f, Fov = 45f },
+                new View { Name = "11_pedestrians", Pos = c + fwd * 4f - rgt * 3f + Vector3.up * 1.6f, LookAt = c + fwd * 14f - rgt * 3f + Vector3.up * 1.0f, Fov = 55f },
             };
+            if (city)
+            {
+                // Line-up of every pedestrian prefab (bind pose) to check textures and heights
+                int k = 0;
+                foreach (var g in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Masar/Prefabs/Pedestrians" }))
+                {
+                    var pf = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(g));
+                    if (pf == null || !pf.name.StartsWith("Ped_Mixamo")) continue;
+                    var inst = (GameObject)PrefabUtility.InstantiatePrefab(pf, scene);
+                    var basePos = c + fwd * 14f + rgt * (-8f + k * 0.9f);
+                    inst.transform.SetPositionAndRotation(new Vector3(basePos.x, 0f, basePos.z), Quaternion.LookRotation(-fwd));
+                    k++;
+                }
+            }
             var views = new[]
             {
                 new View { Name = "01_chase", Pos = c - fwd * 6.2f + Vector3.up * 2.0f, LookAt = c + fwd * 4f + Vector3.up * 0.9f, Fov = 58f },

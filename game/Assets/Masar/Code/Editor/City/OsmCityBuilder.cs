@@ -128,10 +128,10 @@ namespace Masar.EditorTools.City
                 lod.radius = CityDressing.CellSize * 0.71f;
             }
             // Far blocks: plaster boxes with a flat roof, from each building's volume
-            foreach (var (c, size, yaw, plaster) in dress.Boxes)
+            foreach (var (c, size, yaw, boxMat) in dress.Boxes)
             {
                 var b = Block(BlockOf(new Vector2(c.x, c.z)));
-                var wall = b.far[m.Plaster[plaster % m.Plaster.Length]];
+                var wall = b.far[boxMat != null ? boxMat : m.Plaster[0]];
                 wall.Transform = Matrix4x4.TRS(c, Quaternion.Euler(0f, yaw, 0f), Vector3.one);
                 wall.Box(-size * 0.5f, size * 0.5f, 3f, bottom: false, top: false);
                 var roof = b.far[m.Concrete];
@@ -165,7 +165,7 @@ namespace Masar.EditorTools.City
             var palmRoot = new GameObject("Palms").transform; palmRoot.SetParent(world, false);
             int seed = 1;
             foreach (var p in dress.Palms) PalmKit.Place(palmRoot, m, p, seed++);
-            Debug.Log($"[MASAR] Buildings: {dress.Surveyed} surveyed (OSM; {dress.SurveyedKit} with the detailed kit), {dress.Generated} generated ({dress.GeneratedVillas} villas); " +
+            Debug.Log($"[MASAR] Buildings: {dress.Surveyed} surveyed (OSM; {dress.SurveyedKit} with the detailed kit), {dress.Generated} generated ({dress.GeneratedVillas} villas), {dress.Modern} modern; " +
                       $"{dress.Lights} street lights, {dress.Palms.Count} palms; cells {dress.Cells.Count}, blocks {blocks.Count}, near {nearTris / 1000}k tris, mid {midTris / 1000}k, far {farTris / 1000}k");
 
             // ---------------- spawn: right lane of Tahlia Street
