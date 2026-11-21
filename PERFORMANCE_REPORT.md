@@ -59,6 +59,27 @@ Scene: scanned Poly Haven asphalt with detail maps, tire-wear overlays, worn pai
 
 On the PC every car costs at most about 0.7 ms of GPU time. Scene triangles count the car about three times: the camera, the shadow cascades and the depth prepass. The Mansory is the one to watch on the iPad: about 1 M triangles drawn several times per frame. Only the chosen car is loaded (catalog entries are Resources paths), so memory grows with the chosen car, not with the catalog. Draw-call differences between runs also reflect where the car ends up after 12 s (LOD and occlusion of the city).
 
+#### Tahlia / Al Rawdah map (2026-11-22, OSM city, `perf-tiers.ps1 -Map Tahlia -Seconds 15`)
+
+The same 2420×1668 scripted drive, starting on Tahlia Street at 60 % throttle (65 km/h reached), with traffic and pedestrians at Normal: 34 AI cars and about 30 Mixamo pedestrians live. These runs overlapped an iOS export on the same PC; repeated baselines agree within ±0.3 ms GPU.
+
+| Run | Avg FPS | CPU main | GPU | Draw calls | Triangles | Unity alloc |
+|---|---|---|---|---|---|---|
+| High (baseline, 2 runs) | 117 | 3.4–3.5 ms | **8.1–8.6 ms** | 790–795 | 3.1 M | 2,085 MB |
+| High, SSAO off | 156 | 3.1 ms | **6.3 ms** | 546 | 2.2 M | 2,084 MB |
+| High, facade grime off | 117 | 3.3 ms | 8.4 ms | 771 | 3.1 M | 2,084 MB |
+| High, palms off | 115 | 3.3 ms | 8.5 ms | 796 | 3.1 M | 2,085 MB |
+| Ultra (first run, shaders cold) | 69 | 6.7 ms | 14.0 ms | 964 | 4.0 M | 2,084 MB |
+
+Findings:
+- **GPU:** the city costs about twice the test block at High (8.3 ms against 4.1 ms).
+- **SSAO** is the largest single cost, about 2 ms. Its depth-normals prepass draws the city again (+250 draw calls, +0.9 M triangles).
+- **Memory: 2.1 GB, against about 300 MB in the test block.** Causes:
+  - 10.3 M triangles of near-detail building meshes, all loaded at once (no streaming yet).
+  - A CPU copy of every generated mesh. Fixed after this run: render-only meshes are now non-readable, which needs a rebuild to confirm.
+  - The Mixamo characters.
+- **Max tier:** not in this player build (the tier setup now runs in the build commands); to be measured.
+
 #### Before the realism pass (2026-11-15, 2420×1440, MSAA 2x on every tier by mistake, so STP never ran)
 
 | Tier | Render scale | Avg FPS (uncapped) | CPU main | GPU | Draw calls | Triangles | Unity alloc |
