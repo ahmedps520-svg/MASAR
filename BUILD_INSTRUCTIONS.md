@@ -105,7 +105,9 @@ The script opens each page for you, waits, and stores everything:
 3. **App record.** The `asc-preflight` workflow registers the bundle ID `app.masar.game` through Apple's API. You click *New App* once, because Apple has no API for creating app records.
 4. **ForgeBase token** for the diagnostics backend. It's registered with Claude Code as the `forgebase` MCP server, so Claude can create the project and read the reports.
 
-`TESTER_EMAIL` is already stored as a secret. After each upload, CI waits for Apple's processing, sets export compliance, ensures the **MASAR Internal** TestFlight group, and invites that email (`tools/ci/testflight_invite.py`).
+`TESTER_EMAIL` is already stored as a secret. After each upload, CI waits for Apple's processing, sets export compliance, ensures the **MASAR Internal** TestFlight group, and invites that email (`tools/ci/testflight_invite.py`). Internal testers must be users of the App Store Connect team. If `TESTER_EMAIL` isn't one, the script adds the team's account holder instead, without printing the address, because the logs are public. To redo only this step: `gh workflow run testflight-invite.yml --repo ahmedps520-svg/MASAR`.
+
+First successful upload: **build 11, 2026-11-21** (after two fixes: a Windows-made zip with backslash paths, and the missing 1024 px App Store icon).
 
 Why there's still a human step: Apple requires the account owner's own sign-in to create keys and app records. Claude doesn't sign in to accounts or type API keys or tokens into anything.
 
