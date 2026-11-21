@@ -46,6 +46,8 @@ game/Assets/Masar/Art/Textures/**/*_MetallicSmoothness.png
 game/Assets/Masar/Art/Textures/**/*_MetallicSmoothness.png.meta
 game/Assets/Masar/Data/TestSedan.asset
 game/Assets/Masar/Data/TestSedan.asset.meta
+game/Assets/Masar/Data/Cities/
+game/Assets/Masar/Data/Cities.meta
 game/Assets/Masar/Resources/
 game/Assets/Masar/Resources.meta
 
@@ -53,6 +55,8 @@ game/Assets/Masar/Resources.meta
 #      (Sketchfab Standard) and the repository is public. See ASSET_INVENTORY.md.
 game/Assets/Masar/Art/Vehicles/
 game/Assets/Masar/Art/Vehicles.meta
+game/Assets/Masar/Art/Characters/
+game/Assets/Masar/Art/Characters.meta
 
 # ---- Build outputs ----
 build/

@@ -48,6 +48,15 @@ namespace Masar.Game.UI
                 () => s.showTouchControls ? 0 : 1,
                 i => { s.showTouchControls = i == 0; SettingsStore.Save(); });
 
+            // ---- city (generated maps)
+            Section(content, "City");
+            UIKit.Segmented(content, "AI traffic", new[] { "Off", "Light", "Normal", "Heavy" },
+                () => s.trafficDensity,
+                i => { s.trafficDensity = i; SettingsStore.Save(); });
+            UIKit.Segmented(content, "Pedestrians (placeholder figures)", new[] { "Off", "Few", "Normal", "Busy" },
+                () => s.pedestrianDensity,
+                i => { s.pedestrianDensity = i; SettingsStore.Save(); });
+
             // ---- camera (in-game only)
             if (rig != null)
             {

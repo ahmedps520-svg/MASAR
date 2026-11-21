@@ -26,6 +26,7 @@ namespace Masar.EditorTools
         {
             var args = Environment.GetCommandLineArgs();
             bool dev = args.Contains("-development");
+            MasarProjectSetup.Configure();        // graphics tiers (incl. Max), player settings
             string buildNumber = ArgValue(args, "-buildNumber") ?? "1";
             PlayerSettings.iOS.buildNumber = buildNumber;
             MasarProjectSetup.ConfigureIcons();   // App Store Connect rejects uploads without the 1024 px icon
@@ -49,6 +50,7 @@ namespace Masar.EditorTools
 
         public static void BuildWindows()
         {
+            MasarProjectSetup.Configure();
             WriteBuildInfo("win-" + DateTime.UtcNow.ToString("yyyyMMddHHmm"));
             string outDir = Path.Combine(RepoRoot, "build", "windows");
             var opts = new BuildPlayerOptions

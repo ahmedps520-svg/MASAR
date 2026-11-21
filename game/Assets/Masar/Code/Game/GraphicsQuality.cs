@@ -18,7 +18,8 @@ namespace Masar.Game
 #if UNITY_IOS && !UNITY_EDITOR
             return Mathf.Min(2, QualitySettings.names.Length - 1);   // "High" on iPad until measured
 #else
-            return QualitySettings.names.Length - 1;                   // "Ultra" on desktop
+            int u = System.Array.IndexOf(QualitySettings.names, "Ultra");   // "Ultra" on desktop ("Max" is opt-in)
+            return u >= 0 ? u : QualitySettings.names.Length - 1;
 #endif
         }
 
@@ -26,6 +27,9 @@ namespace Masar.Game
         {
             int level = s.qualityLevel < 0 ? DefaultLevel() : Mathf.Clamp(s.qualityLevel, 0, QualitySettings.names.Length - 1);
             if (QualitySettings.GetQualityLevel() != level) QualitySettings.SetQualityLevel(level, true);
+            // City detail distance (generated maps): full-detail buildings within 170 m x scale
+            float[] cellScale = { 0.6f, 0.8f, 1.0f, 1.3f, 1.6f };
+            Masar.World.CellLod.DistanceScale = cellScale[Mathf.Clamp(level, 0, cellScale.Length - 1)];
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = s.targetFrameRate;
         }

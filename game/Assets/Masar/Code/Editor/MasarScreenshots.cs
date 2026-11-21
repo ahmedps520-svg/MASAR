@@ -35,7 +35,11 @@ namespace Masar.EditorTools
             int level = System.Array.IndexOf(QualitySettings.names, quality);
             if (level >= 0) QualitySettings.SetQualityLevel(level, true);
 
-            var scene = EditorSceneManager.OpenScene(TestBlockBuilder.ScenePath, OpenSceneMode.Single);
+            // -masarScene Tahlia: the generated city map instead of the test block
+            int si = System.Array.IndexOf(args, "-masarScene");
+            bool city = si >= 0 && si + 1 < args.Length && args[si + 1] == "Tahlia";
+            var scene = EditorSceneManager.OpenScene(city ? City.OsmCityBuilder.TahliaScene : TestBlockBuilder.ScenePath, OpenSceneMode.Single);
+            if (city) quality = "Tahlia_" + quality;
             var car = Object.FindFirstObjectByType<Masar.Vehicles.VehicleController>();
 
             // -masarCar <id>: review a catalog car in place of the scene's test sedan
@@ -55,6 +59,20 @@ namespace Masar.EditorTools
             Vector3 c = car != null ? car.transform.position : Vector3.zero;
             Vector3 fwd = car != null ? car.transform.forward : Vector3.right;
 
+            Vector3 rgt = Vector3.Cross(Vector3.up, fwd).normalized;
+            var cityViews = new[]
+            {
+                new View { Name = "01_chase", Pos = c - fwd * 6.2f + Vector3.up * 2.0f, LookAt = c + fwd * 4f + Vector3.up * 0.9f, Fov = 58f },
+                new View { Name = "02_cockpit", FromCarInterior = true, Fov = 62f },
+                new View { Name = "03_street_ahead", Pos = c + fwd * 3f + rgt * 9f + Vector3.up * 1.7f, LookAt = c + fwd * 80f + Vector3.up * 4f, Fov = 60f },
+                new View { Name = "04_street_behind", Pos = c + fwd * 40f - rgt * 4f + Vector3.up * 1.7f, LookAt = c - fwd * 40f + Vector3.up * 5f, Fov = 60f },
+                new View { Name = "05_frontage", Pos = c + rgt * 2f + Vector3.up * 1.7f, LookAt = c + fwd * 25f + rgt * 30f + Vector3.up * 8f, Fov = 60f },
+                new View { Name = "06_aerial_low", Pos = c - fwd * 60f + rgt * 40f + Vector3.up * 45f, LookAt = c + fwd * 120f, Fov = 55f },
+                new View { Name = "07_aerial_high", Pos = c - fwd * 250f + Vector3.up * 260f, LookAt = c + fwd * 200f, Fov = 55f },
+                new View { Name = "08_overhead", Pos = c + Vector3.up * 420f + fwd * 0.1f, LookAt = c, Fov = 60f },
+                new View { Name = "09_junction_ahead", Pos = c + fwd * 120f + rgt * 25f + Vector3.up * 18f, LookAt = c + fwd * 220f, Fov = 60f },
+                new View { Name = "10_car_side", Pos = c + rgt * -5.5f + Vector3.up * 1.1f + fwd * 0.5f, LookAt = c + Vector3.up * 0.7f, Fov = 45f },
+            };
             var views = new[]
             {
                 new View { Name = "01_chase", Pos = c - fwd * 6.2f + Vector3.up * 2.0f, LookAt = c + fwd * 4f + Vector3.up * 0.9f, Fov = 58f },
@@ -80,7 +98,7 @@ namespace Masar.EditorTools
             data.renderPostProcessing = true;
             data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
             data.antialiasingQuality = AntialiasingQuality.High;
-            cam.farClipPlane = 1500f;
+            cam.farClipPlane = 1800f;
             const int W = 2420, H = 1668; // iPad Pro 11" (M5) native resolution
             var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32) { antiAliasing = 1 };
             cam.targetTexture = rt;
@@ -88,7 +106,7 @@ namespace Masar.EditorTools
             // -masarViews 01,02,10 renders only those views
             int vi = System.Array.IndexOf(args, "-masarViews");
             var only = vi >= 0 && vi + 1 < args.Length ? args[vi + 1].Split(',') : null;
-            foreach (var v in views)
+            foreach (var v in city ? cityViews : views)
             {
                 if (only != null && System.Array.IndexOf(only, v.Name.Substring(0, 2)) < 0) continue;
                 if (v.FromCarInterior && car != null)

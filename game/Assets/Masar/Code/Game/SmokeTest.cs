@@ -87,11 +87,18 @@ namespace Masar.Game
             Debug.Log($"[MASAR smoke] switched off: {feature}");
         }
 
+        private static int PedCount()
+        {
+            var ps = FindFirstObjectByType<Masar.World.Traffic.PedestrianSystem>();
+            return ps != null ? ps.Count : 0;
+        }
+
         private IEnumerator Start()
         {
             string dir = Application.persistentDataPath;
             Debug.Log($"[MASAR smoke] start, output to {dir}");
-            SceneManager.LoadScene("TestBlock");
+            string map = Arg("-masarMap") ?? "TestBlock";
+            SceneManager.LoadScene(Application.CanStreamedLevelBeLoaded(map) ? map : "TestBlock");
             yield return null;
             yield return null;
             // Optional overrides for comparable per-tier measurements
@@ -118,6 +125,8 @@ namespace Masar.Game
             // "-masarCar id" is applied by DriveSession; it only changes the report name here
             string carArg = Arg("-masarCar");
             if (!string.IsNullOrEmpty(carArg)) tag += "_car-" + carArg;
+            string mapArg = Arg("-masarMap");
+            if (!string.IsNullOrEmpty(mapArg)) tag += "_map-" + mapArg;
             var car = FindFirstObjectByType<VehicleController>();
             if (car == null) { Debug.LogError("[MASAR smoke] no vehicle found"); Application.Quit(2); yield break; }
             var driver = new ScriptedDriver();
@@ -159,7 +168,9 @@ namespace Masar.Game
                 $"avgCpuMainMs={(nCpu > 0 ? sumCpu / nCpu : -1).ToString("F2", inv)}\navgGpuMs={(nGpu > 0 ? sumGpu / nGpu : -1).ToString("F2", inv)}\n" +
                 $"unityAllocMB={(last.UnityAllocatedBytes / 1048576.0).ToString("F0", inv)}\nfootprintMB={(last.FootprintBytes < 0 ? -1 : last.FootprintBytes / 1048576.0).ToString("F0", inv)}\n" +
                 $"drawCalls={last.DrawCalls}\nbatches={last.Batches}\ntriangles={last.Triangles}\n" +
-                $"carSpeedKmh={(car.Telemetry.ForwardSpeedMs * 3.6f).ToString("F0", inv)}\ncarGear={car.Telemetry.Gear}\ncarUpright={car.transform.up.y.ToString("F3", inv)}\n";
+                $"carSpeedKmh={(car.Telemetry.ForwardSpeedMs * 3.6f).ToString("F0", inv)}\ncarGear={car.Telemetry.Gear}\ncarUpright={car.transform.up.y.ToString("F3", inv)}\n" +
+                $"trafficCars={(Masar.World.Traffic.TrafficSystem.Instance != null ? Masar.World.Traffic.TrafficSystem.Instance.CarCount : 0)}\n" +
+                $"pedestrians={PedCount()}\n";
             File.WriteAllText(Path.Combine(dir, $"masar_smoke_{tag}.txt"), report);
             Debug.Log("[MASAR smoke] report\n" + report);
 

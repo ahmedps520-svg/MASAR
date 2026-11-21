@@ -34,6 +34,7 @@ namespace Masar.EditorTools
             public float LodBias;
             public int TextureMipLimit;
             public bool GpuResidentDrawer;
+            public bool AdditionalLightShadows;
         }
 
         // Starting points. Real values are tuned from measurements on the device (see PERFORMANCE_REPORT.md).
@@ -43,6 +44,9 @@ namespace Masar.EditorTools
             new Tier { Name = "Medium", RenderScale = 0.72f, ShadowDistance = 90f,  Cascades = 2, ShadowRes = 2048, SoftShadows = true,  Ssao = false, Hdr = true,  Msaa = 1, Stp = false, AdditionalLights = 8, LodBias = 1.0f, TextureMipLimit = 0, GpuResidentDrawer = true },
             new Tier { Name = "High",   RenderScale = 0.82f, ShadowDistance = 130f, Cascades = 3, ShadowRes = 2048, SoftShadows = true,  Ssao = true,  Hdr = true,  Msaa = 1, Stp = true,  AdditionalLights = 16, LodBias = 1.5f, TextureMipLimit = 0, GpuResidentDrawer = true },
             new Tier { Name = "Ultra",  RenderScale = 1.00f, ShadowDistance = 180f, Cascades = 4, ShadowRes = 4096, SoftShadows = true,  Ssao = true,  Hdr = true,  Msaa = 1, Stp = true,  AdditionalLights = 32, LodBias = 2.0f, TextureMipLimit = 0, GpuResidentDrawer = true },
+            // Added 2026-11-21: Ultra ran at ~90 fps on the iPad Pro M5 in the test block. Supersampled
+            // (renders above native, then filters down), longest shadows, highest LOD bias.
+            new Tier { Name = "Max",    RenderScale = 1.20f, ShadowDistance = 260f, Cascades = 4, ShadowRes = 4096, SoftShadows = true,  Ssao = true,  Hdr = true,  Msaa = 1, Stp = false, AdditionalLights = 32, LodBias = 3.0f, TextureMipLimit = 0, GpuResidentDrawer = true, AdditionalLightShadows = true },
         };
 
         [MenuItem("MASAR/Setup/Configure Project")]
@@ -60,6 +64,7 @@ namespace Masar.EditorTools
             Configure();
             TestBlockBuilder.BuildAll();
             ImportedCarBuilder.BuildAll();   // selectable cars + catalog (imported models are local only)
+            City.OsmCityBuilder.BuildTahlia();   // real map from data/osm (OSM, ODbL)
             AssetDatabase.SaveAssets();
         }
 
@@ -231,7 +236,7 @@ namespace Masar.EditorTools
             Set(so, "m_UpscalingFilter", t.Stp ? 4 : 0);   // 4 = STP, 0 = Auto
             Set(so, "m_AdditionalLightsPerObjectLimit", Mathf.Min(8, t.AdditionalLights));
             Set(so, "m_AdditionalLightsRenderingMode", 1); // per pixel
-            Set(so, "m_AdditionalLightShadowsSupported", false);
+            Set(so, "m_AdditionalLightShadowsSupported", t.AdditionalLightShadows);
             Set(so, "m_RequireDepthTexture", true);
             Set(so, "m_UseSRPBatcher", true);
             Set(so, "m_GPUResidentDrawerMode", t.GpuResidentDrawer ? 1 : 0);

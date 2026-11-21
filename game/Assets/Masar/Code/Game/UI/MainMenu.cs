@@ -39,14 +39,15 @@ namespace Masar.Game.UI
             stripe.anchorMin = stripe.anchorMax = new Vector2(0.423f, 0.735f);
             stripe.pivot = new Vector2(0f, 0.5f);
             stripe.anchoredPosition = Vector2.zero;
-            var subtitle = UIKit.Label(root, "Jeddah urban driving simulator  ·  Phase 0 technical build", 32, UIKit.TextDim, TextAnchor.UpperLeft);
+            var subtitle = UIKit.Label(root, "Jeddah urban driving simulator  ·  Month 2 build", 32, UIKit.TextDim, TextAnchor.UpperLeft);
             UIKit.Anchor(subtitle.rectTransform, new Vector2(0.423f, 0.64f), new Vector2(0.98f, 0.715f), Vector2.zero, Vector2.zero);
 
             // Menu column
             _menuColumn = UIKit.Rect(root, "Menu");
             UIKit.Anchor(_menuColumn, new Vector2(0.06f, 0.06f), new Vector2(0.36f, 0.58f), Vector2.zero, Vector2.zero);
             UIKit.VStack(_menuColumn, 18, new RectOffset(0, 0, 0, 0), false);
-            UIKit.Size(UIKit.Button(_menuColumn, "Free drive: Jeddah test block", OnDrive, 32, UIKit.Accent), 92);
+            UIKit.Size(UIKit.Button(_menuColumn, "Drive: Tahlia / Al Rawdah (real map)", () => OnDrive("Tahlia"), 32, UIKit.Accent), 92);
+            UIKit.Size(UIKit.Button(_menuColumn, "Drive: test block", () => OnDrive("TestBlock"), 28), 72);
             _carButton = UIKit.Button(_menuColumn, CarLabel(), ToggleCars, 30);
             UIKit.Size(_carButton, 80);
             UIKit.Size(UIKit.Button(_menuColumn, "Settings", ToggleSettings, 30), 80);
@@ -61,12 +62,13 @@ namespace Masar.Game.UI
             UIKit.Anchor(card.rectTransform, new Vector2(0.42f, 0.12f), new Vector2(0.94f, 0.58f), Vector2.zero, Vector2.zero);
             var status = UIKit.Label(card.transform,
                 "<b>What this build is</b>\n" +
-                "A feasibility build: selectable cars on one custom physics model, one small Jeddah-style street block, six cameras, input abstraction and live performance metrics.\n\n" +
-                "<b>Placeholders</b>\n" +
-                "Imported cars are third-party models for private testing only (licenses in the asset inventory); their handling values are class estimates. Procedural buildings. Traffic lights are visual props only. There is no traffic AI, pedestrians, audio, damage, driving school or Arabic UI yet.\n\n" +
+                "Month 2 work in progress: Tahlia Street and Al Rawdah built from real OpenStreetMap roads at real scale, AI traffic that obeys the signals, pedestrians, selectable cars, six cameras and live performance metrics.\n\n" +
+                "<b>Not real yet</b>\n" +
+                "Only some buildings are surveyed in OpenStreetMap; the rest are generated to fill the plots. Pedestrians are placeholder figures and don't cross roads. Traffic doesn't change lanes. Imported cars are for private testing only. No audio, damage, driving school or Arabic UI yet.\n\n" +
                 "<b>Logitech G923</b>\n" +
-                "Desktop: read as a generic HID joystick (mapping unverified). iPad: Apple documents no public racing-wheel API on iPadOS. No force feedback is implemented.",
-                24, UIKit.TextDim, TextAnchor.UpperLeft);
+                "On the iPad through the wheel bridge (Windows PC + Wi-Fi), with force feedback.\n\n" +
+                "Map data © OpenStreetMap contributors (ODbL).",
+                22, UIKit.TextDim, TextAnchor.UpperLeft);
             status.supportRichText = true;
             UIKit.Anchor(status.rectTransform, Vector2.zero, Vector2.one, new Vector2(32, 28), new Vector2(-32, -28));
 
@@ -80,8 +82,11 @@ namespace Masar.Game.UI
             bar.gameObject.SetActive(false);
         }
 
-        private void OnDrive()
+        private void OnDrive(string scene)
         {
+            driveScene = Application.CanStreamedLevelBeLoaded(scene) ? scene : "TestBlock";
+            SettingsStore.Current.selectedMap = driveScene;
+            SettingsStore.Save();
             StartCoroutine(Load());
         }
 
@@ -95,7 +100,7 @@ namespace Masar.Game.UI
             {
                 float p = Mathf.Clamp01(op.progress / 0.9f);
                 _progressFill.rectTransform.anchorMax = new Vector2(p, 1);
-                _progressText.text = $"Loading Jeddah test block… {p * 100f:F0}%";
+                _progressText.text = $"Loading {(driveScene == "Tahlia" ? "Tahlia / Al Rawdah" : "test block")}… {p * 100f:F0}%";
                 yield return null;
             }
             Debug.Log($"[MASAR] Scene '{driveScene}' loaded in {Time.realtimeSinceStartup - t0:F2}s");

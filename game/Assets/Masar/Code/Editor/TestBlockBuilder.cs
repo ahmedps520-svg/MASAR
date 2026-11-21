@@ -639,7 +639,7 @@ namespace Masar.EditorTools
             }
         }
 
-        private static void Signal(Transform parent, CityMaterials m, Vector3 basePos, float facingYaw, float phase, int idx)
+        internal static SignalPropCycler Signal(Transform parent, CityMaterials m, Vector3 basePos, float facingYaw, float phase, int idx)
         {
             var root = new GameObject($"Signal_{idx}");
             root.transform.SetParent(parent, false);
@@ -660,6 +660,7 @@ namespace Masar.EditorTools
             c.center = new Vector3(0f, 1.6f, 0f);
             c.radius = 0.12f;
             c.height = 3.2f;
+            return cyc;
         }
 
         private static Renderer Lamp(Transform parent, Material mat, float y, int idx, string tag)
@@ -669,7 +670,7 @@ namespace Masar.EditorTools
             return Mesh(parent, "Lamp" + tag, b, mat, $"Signal_{idx}_{tag}");
         }
 
-        private static Renderer Mesh(Transform parent, string name, MeshBuilder b, Material mat, string assetName)
+        internal static Renderer Mesh(Transform parent, string name, MeshBuilder b, Material mat, string assetName)
         {
             b.FixWinding();
             var go = new GameObject(name);
@@ -686,7 +687,9 @@ namespace Masar.EditorTools
 
         // ------------------------------------------------------------------ lighting & atmosphere
 
-        private static void BuildLighting()
+        private static void BuildLighting() => BuildLighting(null, "Assets/Masar/Scenes/TestBlockPost.asset");
+
+        internal static void BuildLighting(List<(Vector3 center, Vector3 size)> probes, string postProfilePath)
         {
             // Photographed sky (Poly Haven HDRI, CC0). The sun direction is read from the HDRI's
             // brightest pixel so shadows agree with the sky, and fog takes the HDRI's horizon color.
@@ -712,6 +715,9 @@ namespace Masar.EditorTools
                 horizon = acc / w;
                 float mx = Mathf.Max(horizon.r, Mathf.Max(horizon.g, horizon.b));
                 if (mx > 0f) horizon = horizon / mx * 0.80f;
+                // A freshly imported HDR texture can read back garbage (compressed format): fall back to the
+                // direction measured on earlier builds when the result is implausible (sun below 10 degrees)
+                if (sunDir.y < 0.17f || horizon.a < 0.5f) { sunDir = new Vector3(0.59f, 0.68f, -0.43f).normalized; horizon = new Color(0.655f, 0.714f, 0.80f); Debug.LogWarning("[MASAR] HDRI read-back implausible: using the measured sun direction"); }
                 Debug.Log($"[MASAR] HDRI sun dir {sunDir} (elevation {Mathf.Asin(sunDir.y) * Mathf.Rad2Deg:F0} deg), horizon {horizon}");
             }
 
@@ -732,7 +738,9 @@ namespace Masar.EditorTools
             sky.SetFloat("_ImageType", 0f);    // 360
             sky.SetFloat("_Exposure", 1.0f);
             sky.SetFloat("_Rotation", 0f);
-            AssetDatabase.CreateAsset(sky, $"{MaterialLibrary.MatRoot}/Sky_HDRI_Clear.mat");
+            var skyPath = $"{MaterialLibrary.MatRoot}/Sky_HDRI_Clear.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(skyPath) != null) AssetDatabase.DeleteAsset(skyPath);
+            AssetDatabase.CreateAsset(sky, skyPath);
             RenderSettings.skybox = sky;
             // Ambient: cool sky above, warm bounce from sunlit sand and plaster below (as in Jeddah)
             RenderSettings.ambientMode = AmbientMode.Trilight;
@@ -747,13 +755,18 @@ namespace Masar.EditorTools
             RenderSettings.fogColor = horizon;
             // Reflection probes along the avenue and over the block
             int i = 0;
-            for (float x = -200f; x <= 200f; x += 100f)
-                Probe(new Vector3(x, 4f, 0f), new Vector3(110f, 30f, 60f), i++);
-            Probe(new Vector3(0f, 4f, -70f), new Vector3(240f, 30f, 130f), i++);
+            if (probes != null) foreach (var pr in probes) Probe(pr.center, pr.size, i++);
+            else
+            {
+                for (float x = -200f; x <= 200f; x += 100f)
+                    Probe(new Vector3(x, 4f, 0f), new Vector3(110f, 30f, 60f), i++);
+                Probe(new Vector3(0f, 4f, -70f), new Vector3(240f, 30f, 130f), i++);
+            }
 
             // Post-processing
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
-            AssetDatabase.CreateAsset(profile, "Assets/Masar/Scenes/TestBlockPost.asset");
+            if (AssetDatabase.LoadAssetAtPath<VolumeProfile>(postProfilePath) != null) AssetDatabase.DeleteAsset(postProfilePath);
+            AssetDatabase.CreateAsset(profile, postProfilePath);
             var tone = profile.Add<Tonemapping>(true);
             tone.mode.Override(TonemappingMode.ACES);
             var bloom = profile.Add<Bloom>(true);
@@ -790,7 +803,7 @@ namespace Masar.EditorTools
             p.blendDistance = 6f;
         }
 
-        private static void MarkStatic(GameObject go, bool occluder)
+        internal static void MarkStatic(GameObject go, bool occluder)
         {
             var flags = StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic;
             if (occluder) flags |= StaticEditorFlags.OccluderStatic;

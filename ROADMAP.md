@@ -23,7 +23,21 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 
 **Gate 0 exit criteria:** the skeleton runs on the iPad from TestFlight, at least 30 fps sustained on High in the test block for 10 minutes with no thermal `critical` state; G923-on-iPad result recorded; owner approves Month 2 scope.
 
-## Month 2: Vehicles and rendering
+## Month 2: Vehicles, rendering, and the first real city (approved 2026-11-21)
+
+**Owner approval 2026-11-21.** The owner approved Month 2 and pulled the first real map, AI traffic and pedestrians forward from Months 3–4, with a heavier graphics tier. (On the iPad, Ultra ran at about 90 fps in the test block.) Owner choices:
+- Map: Tahlia / Al Rawdah, from OpenStreetMap.
+- OSM download: approved.
+- Pedestrians: the owner provides Mixamo characters; placeholders until then.
+
+| Deliverable | Status | Acceptance criteria |
+|---|---|---|
+| Wheel bridge v1 (G923 → PC → Wi-Fi → iPad, FFB) | ✅ | Owner confirmed it works with minimal delay (2026-11-21). A wheel without the PC is to be revisited later |
+| First real map: Tahlia / Al Rawdah from OSM (`tools/osm`, `OsmCityBuilder`) | 🟡 | Real road network at real scale (lanes, kerbs, sidewalks, markings, signals). Surveyed + generated buildings. Drivable on the iPad |
+| AI traffic v1 (lane graph, IDM, signals, junction conflicts) | 🟡 | Cars follow lanes, stop at red, yield at junctions, react to the player. Lane changes are v2 |
+| Pedestrians v1 | 🟡 | Walk the sidewalks with placeholder bodies. Mixamo characters once provided. Road crossing is v2 |
+| Max graphics tier | 🟡 | Measured on the iPad in the city |
+| Items below (hero vehicle, physics, audio, APV lighting, Arabic) | ⬜ | As listed |
 
 Dependencies: Gate 0.
 - Hero test vehicle in Blender: exterior LOD0–3, cockpit-grade interior, working gauges. A generic design.

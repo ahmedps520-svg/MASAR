@@ -20,6 +20,8 @@ Every asset in the repository must have a row here before it is committed. If an
 | G001 | MASAR Test Sedan (generic, unbranded) | Procedural mesh (placeholder) | Self-made: `Assets/Masar/Code/Editor/TestCarBuilder.cs` | Project-owned | — | 2026-11-14 | ✓ |
 | G003 | MASAR app icon (asphalt, lane line, kerb stripes, name) | 1024² PNG | Self-made: `tools/make-icon.ps1` → `Assets/Masar/Art/Icon/AppIcon.png` | Project-owned | — | 2026-11-21 | ✓ |
 | G002 | Jeddah test block (roads, kerbs, buildings, villas, mosque, palms, lights, signal props) | Procedural meshes | Self-made: `TestBlockBuilder.cs`, `CityKit.cs` | Project-owned | — | 2026-11-14 | ✓ |
+| G004 | Tahlia / Al Rawdah city (road, kerb, sidewalk and marking meshes from the OSM roads; surveyed + generated buildings; lane graph) | Generated from O001 | Self-made: `Code/Editor/City/*` | Project-owned (derived from ODbL data: attribution shown) | © OpenStreetMap contributors | 2026-11-21 | ✓ |
+| G005 | Traffic cars (the generic test sedan in 8 paints, visual-only) and placeholder pedestrians (9 variants) | Generated prefabs | Self-made: `Code/Editor/City/TrafficKit.cs` | Project-owned | — | 2026-11-21 | ✓ |
 
 ### Selectable cars (third-party, local only, private testing)
 
@@ -34,6 +36,12 @@ Added on 2026-11-20 at the owner's request: the owner downloaded these from Sket
 | V003 | Lamborghini Aventador SVJ (LP 770-4): 32k tris, no interior | https://sketchfab.com/3d-models/lamborghini-aventador-lp-770-4-svj-71460dcc354045ddb1e7a8670678ffca by amogusstrikesback2 | CC BY 4.0 | This work is based on "lamborghini aventador lp 770-4 svj" by amogusstrikesback2, licensed under CC-BY-4.0 | ⚠ Private only. Real brand (the license itself allows commercial use) |
 | V004 | Aventador SVJ Mansory twin-turbo: 975k tris, 85 textures | https://sketchfab.com/3d-models/7fc25aa2e7a24e28be35829d635e93fa by VTX | CC BY-NC-SA 4.0 | "Lamborghini Aventador SVJ Mansory Twin Turbo PBR" by VTX, CC BY-NC-SA 4.0 | ⚠ Private only. **Non-commercial.** Real brands. A kitbash: it contains parts named after other vehicles (`G800BRABUS4X4`) |
 | — | 2011 Lamborghini Aventador LP700-4 (ActsOfDoge) | https://sketchfab.com/3d-models/2011-lamborghini-aventador-lp700-4-9d6ab953e2064bceb9cf8772bfef79bb | Sketchfab Standard | — | ❌ **Not used.** The author's own description calls it an "NFS port", meaning it was ripped from a Need for Speed game. Policy rule 2 |
+
+### Pedestrian characters (third-party, local only)
+
+| ID | Asset | Source | License | Status |
+|---|---|---|---|---|
+| C001 | 12 Mixamo characters (Ch01, Ch08, Ch12, Ch17, Ch22, Ch23, Ch28, Ch31, Ch33, Ch37, Ch41, Remy) + the "Walking" animation; "Start Walking" and "Sitting Laughing" were downloaded but are unused | https://www.mixamo.com, downloaded by the owner 2026-11-21 into `Art/Characters/Imported/` | Adobe Mixamo terms: royalty-free use in games (commercial and non-commercial); no redistribution of the files themselves | ✓ Used for pedestrians. **Not in git** (`Art/Characters/` is gitignored, because the repo is public). They reach the iPad only inside the compiled app. Textures capped at 1024 px |
 
 ## Textures & materials
 
@@ -69,7 +77,7 @@ T001–T005 were downloaded on 2026-11-14 from ambientCG as 1K-JPG sets; T006–
 
 | ID | Dataset | Area | Source | License | Attribution required | Added |
 |---|---|---|---|---|---|---|
-| — | *(none yet)* | | | | | |
+| O001 | OpenStreetMap extract, Tahlia / Al Rawdah, Jeddah: roads, buildings, land use, signals (`data/osm/tahlia-rawdah.json`) | 21.5463–21.5607 N, 39.1483–39.1637 E (about 1.6 × 1.6 km) | Overpass API via `tools/osm/fetch-osm.ps1`, downloaded 2026-11-21 with the owner's approval | ODbL 1.0 | Yes: "© OpenStreetMap contributors", shown in the main menu and on screen while driving. The generated map is a Produced Work; the extract itself is shared under ODbL in the repo | 2026-11-21 |
 
 ## Third-party code / packages
 

@@ -19,6 +19,9 @@ namespace Masar.Game
         public TransmissionKind transmission = TransmissionKind.Automatic;
         public CameraMode cameraMode = CameraMode.Chase;
         public string selectedCar = "";               // CarCatalog entry id; empty = first car
+        public string selectedMap = "Tahlia";         // drive scene: "Tahlia" (real map, OSM) or "TestBlock"
+        public int trafficDensity = 2;                // 0 off, 1 light, 2 normal, 3 heavy
+        public int pedestrianDensity = 2;             // 0 off, 1 few, 2 normal, 3 busy
         public CameraModeSettings[] cameras;
         public InputCalibration keyboard = new InputCalibration();
         public InputCalibration gamepad = new InputCalibration { steerDeadzone = 0.08f, steerExponent = 1.4f };

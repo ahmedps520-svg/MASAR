@@ -7,6 +7,7 @@
         "Masar.Vehicles",
         "Masar.Cameras",
         "Masar.Diagnostics",
+        "Masar.World",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",

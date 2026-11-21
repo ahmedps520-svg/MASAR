@@ -282,6 +282,14 @@ namespace Masar.World
             return m;
         }
 
+        /// <summary>Appends another builder's geometry (already in world space).</summary>
+        public void Append(MeshBuilder o)
+        {
+            int baseIdx = V.Count;
+            V.AddRange(o.V); N.AddRange(o.N); UV.AddRange(o.UV); C.AddRange(o.C);
+            for (int i = 0; i < o.T.Count; i++) T.Add(o.T[i] + baseIdx);
+        }
+
         public void Clear() { V.Clear(); N.Clear(); UV.Clear(); C.Clear(); T.Clear(); Transform = Matrix4x4.identity; VertexColor = Color.white; }
     }
 }

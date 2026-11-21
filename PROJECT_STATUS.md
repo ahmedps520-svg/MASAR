@@ -1,6 +1,6 @@
 # MASAR: Project Status
 
-**Phase:** 0, technical foundation · **Last updated:** 2026-11-20 · **Gate 0:** not yet passed (needs the iPad run)
+**Phase:** Month 2 (approved 2026-11-21) · **Last updated:** 2026-11-21 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
 
 ## Summary
 
@@ -32,9 +32,11 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **Wheel bridge (2026-11-21):** G923 → Windows PC → Wi-Fi → iPad, with force feedback from the simulation. Loopback test: 250 Hz, 0 lost, 3–4 ms round trip | BUILD_INSTRUCTIONS §5a, `WheelBridgeSelfTest` |
 | **Wheel bridge on the real G923 (2026-11-21):** the first owner test showed only Cross and Square working (wheel in PlayStation compatibility mode). Bridge rebuilt on DirectInput + G HUB's PC mode: steering read in the background, force feedback measured in both directions (+148° / −265° at 25 %), pedals 0 at rest | `MasarWheelBridge --test-ffb`, `--probe` |
 
-## In progress
+## In progress (Month 2)
 
-Nothing. Phase 0 work that doesn't need the iPad is complete.
+- **Tahlia / Al Rawdah map** from OpenStreetMap, with AI traffic and pedestrians (placeholder bodies): built and compiled, under review (screenshots, PC perf run, then TestFlight).
+- **Max graphics tier** (above Ultra): to be measured on the iPad in the city.
+- Waiting on the owner: Mixamo characters for the pedestrians (BUILD_INSTRUCTIONS §5b).
 
 ## Blockers (owner action needed)
 

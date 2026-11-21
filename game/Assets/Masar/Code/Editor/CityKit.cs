@@ -93,6 +93,9 @@ namespace Masar.EditorTools
             }
         }
 
+        public IEnumerable<KeyValuePair<Material, MeshBuilder>> Entries => _byMat;
+        public bool IsEmpty { get { foreach (var kv in _byMat) if (kv.Value.Count > 0) return false; return true; } }
+
         public List<GameObject> Flush(Transform parent, string name, string meshDir, bool collider)
         {
             var list = new List<GameObject>();

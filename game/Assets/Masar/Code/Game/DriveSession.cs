@@ -19,6 +19,8 @@ namespace Masar.Game
         public CameraRig cameraRig;
         public Transform spawnPoint;
         public string menuScene = "MainMenu";
+        /// <summary>Data credit shown on screen while driving (generated maps: OpenStreetMap, ODbL).</summary>
+        public string mapAttribution = "";
 
         private Canvas _canvas;
         private DriveHud _hud;
@@ -78,6 +80,7 @@ namespace Masar.Game
             v.Input = router;
             if (v.Simulation != null) v.Simulation.Drivetrain.Mode = SettingsStore.Current.transmission;
             router.VehicleSteeringLockDeg = v.Definition.steering.steeringWheelLockDegrees;
+            Masar.World.Traffic.TrafficSystem.Player = v.GetComponent<Rigidbody>();
             cameraRig.SetTarget(v);
             if (_hud) _hud.vehicle = v;
             GetComponentsInScene(_renderers);
@@ -97,6 +100,8 @@ namespace Masar.Game
             vehicle.Input = router;
             vehicle.Simulation.Drivetrain.Mode = s.transmission;
             router.VehicleSteeringLockDeg = vehicle.Definition.steering.steeringWheelLockDegrees;
+            Masar.World.Traffic.TrafficSystem.Player = vehicle.GetComponent<Rigidbody>();
+            ApplyPopulation(s);
             var ffb = gameObject.AddComponent<WheelForceFeedback>();
             ffb.Vehicle = () => vehicle;
             ffb.Paused = () => _paused;
@@ -125,11 +130,28 @@ namespace Masar.Game
             services.Perf.VisibleRendererCounter = CountVisible;
 
             _hud.ShowCameraName(CameraName(cameraRig.mode));
+
+            if (!string.IsNullOrEmpty(mapAttribution))
+            {
+                var credit = UIKit.Label(_canvas.transform, mapAttribution, 18, new Color(1f, 1f, 1f, 0.55f), TextAnchor.LowerRight);
+                UIKit.Anchor(credit.rectTransform, new Vector2(0.55f, 0f), new Vector2(0.995f, 0.03f), Vector2.zero, Vector2.zero);
+                credit.raycastTarget = false;
+            }
+        }
+
+        private static void ApplyPopulation(MasarSettings s)
+        {
+            var args = System.Environment.GetCommandLineArgs();
+            int ti = System.Array.IndexOf(args, "-masarTraffic");
+            Masar.World.Traffic.TrafficSystem.Density = ti >= 0 && ti + 1 < args.Length && int.TryParse(args[ti + 1], out var td) ? td : s.trafficDensity;
+            int pi = System.Array.IndexOf(args, "-masarPedestrians");
+            Masar.World.Traffic.PedestrianSystem.Density = pi >= 0 && pi + 1 < args.Length && int.TryParse(args[pi + 1], out var pd) ? pd : s.pedestrianDensity;
         }
 
         private void OnDestroy()
         {
             SettingsStore.Changed -= OnSettingsChanged;
+            Masar.World.Traffic.TrafficSystem.Player = null;
             if (GameServices.Instance)
             {
                 GameServices.Instance.Perf.VisibleRendererCounter = null;
@@ -139,7 +161,7 @@ namespace Masar.Game
             Time.timeScale = 1f;
         }
 
-        private void OnSettingsChanged(MasarSettings s) => RefreshTouchControls();
+        private void OnSettingsChanged(MasarSettings s) { RefreshTouchControls(); ApplyPopulation(s); }
 
         /// <summary>QA only: show the touch controls even without a touchscreen (UI capture on desktop).</summary>
         public void ForceTouchControls(bool on)

@@ -220,6 +220,27 @@ The wheel is read through DirectInput, which keeps working while the bridge wind
 
 How it works: UDP on port 7780. The bridge sends wheel angle (degrees), pedals and buttons at 250 Hz. The game maps the rim 1:1 onto the current car's steering lock and sends back force feedback at about 100 Hz: self-aligning torque from the front tires, parking-speed scrub, and a soft stop at the car's steering lock. Forces drop to zero if the game pauses or the link goes quiet for 0.3 s. Wire format: `tools/wheel-bridge/Protocol.cs` and `game/Assets/Masar/Code/Input/NetworkWheel.cs`. Loopback self-test: `-executeMethod Masar.EditorTools.WheelBridgeSelfTest.Run`, with the bridge running in `-Simulate` mode against `127.0.0.1`.
 
+## 5b. The real map (Tahlia / Al Rawdah), traffic and pedestrians
+
+The map is generated from OpenStreetMap data (ODbL, credited in the game):
+
+1. `powershell -ExecutionPolicy Bypass -File E:\MASAR\tools\osm\fetch-osm.ps1` downloads the area into `data/osm/tahlia-rawdah.json`. It is already in the repo; run it again only to refresh the data. It retries the public Overpass servers when they are busy. Other areas: `-Name <name> -South … -West … -North … -East …`.
+2. Unity: **MASAR → Build → City (Tahlia)**, or `-executeMethod Masar.EditorTools.City.OsmCityBuilder.BuildTahlia`. `ConfigureAndBuildScenes` also runs it. This takes about 10–20 minutes, mostly the probe and occlusion bakes.
+
+Building the map:
+- **Roads:** distance fields on a 1.25 m grid give the road, sidewalk and plot surfaces, with kerb radii at junctions. Then come kerbs (painted black and yellow on main roads), lane markings, stop lines and zebras.
+- **Buildings:** every surveyed OSM building is used at its footprint, and the remaining plots get generated buildings. All of it is merged into 128 m cells (detailed near, simplified at mid range) inside 512 m blocks (boxes far away).
+- **Traffic:** the lane graph includes junction connectors and signal groups.
+
+In the game: **Main menu → Drive: Tahlia / Al Rawdah**. Settings → City sets the traffic density and pedestrians (Off / Light / Normal / Heavy). Perf runs: `tools\perf-tiers.ps1 -Map Tahlia`.
+
+**Pedestrian characters (Mixamo, owner download).** Until real characters are added, pedestrians are placeholder figures. To use Mixamo characters:
+1. Sign in at https://www.mixamo.com with a free Adobe account.
+2. **Characters:** pick 4–8, for example a man in casual clothes, a man in a business suit, and women in long clothing. Download each one as **FBX for Unity (.fbx)**, **With Skin**, pose **T-pose**.
+3. **Animations:** search "Walking", pick a plain walk, tick **In Place**, then download it as **FBX for Unity**, **Without Skin**. Its file name must contain "walk".
+4. Put all the files in `E:\MASAR\game\Assets\Masar\Art\Characters\Imported\`. The folder is gitignored, because Mixamo files may be used in a game but not redistributed.
+5. Rebuild the city. The builder imports them as humanoids and uses them instead of the placeholders.
+
 ## 6. Known pipeline limits
 
 | Limit | Impact | Mitigation |
