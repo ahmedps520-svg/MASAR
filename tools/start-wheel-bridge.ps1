@@ -18,8 +18,9 @@ param(
 $repo = Split-Path -Parent $PSScriptRoot
 $exe = Join-Path $repo "build\wheel-bridge\MasarWheelBridge.exe"
 $src = Join-Path $repo "tools\wheel-bridge"
-$newest = (Get-ChildItem $src -Filter *.cs | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
-if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $newest) {
+$newest = (Get-ChildItem $src -Include *.cs,*.csproj -Recurse -File | Where-Object FullName -notmatch '\\(bin|obj)\\' | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
+$dll = Join-Path $repo "build\wheel-bridge\MasarWheelBridge.dll"
+if (-not (Test-Path $dll) -or (Get-Item $dll).LastWriteTime -lt $newest) {
   Write-Host "Building the wheel bridge..."
   dotnet publish $src -c Release -o (Join-Path $repo "build\wheel-bridge") --nologo | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Build failed (is the .NET SDK installed?)" }

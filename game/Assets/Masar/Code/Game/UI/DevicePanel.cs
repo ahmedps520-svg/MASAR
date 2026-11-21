@@ -70,7 +70,7 @@ namespace Masar.Game.UI
                 else
                     _sb.Append("  Waiting for the bridge... If it is running and nothing arrives, check Settings > Privacy > Local Network > MASAR.\n");
             }
-            _sb.Append("  Buttons: paddles = gears, A = camera, B = handbrake, X = lights, Y = pause, D-pad up = overlay, down = auto/manual\n\n");
+            _sb.Append("  G923 buttons: paddles = gears, Cross = camera, Square = handbrake, Circle = lights, Options = pause, D-pad up = overlay, down = auto/manual\n\n");
 
             var devices = InputSystem.devices;
             if (devices.Count == 0) _sb.Append("No input devices reported by the engine.\n");

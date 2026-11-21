@@ -27,6 +27,9 @@ namespace Masar.WheelBridge
         public const int StateSize = 48, ForceSize = 36;
         public const byte FlagHasClutch = 1, FlagFfb = 2, FlagRacingWheel = 4, FlagSimulated = 8;
         public const sbyte NoShifter = 127;
+        // Buttons field: the Windows.Gaming.Input RacingWheelButtons layout (game: NetworkWheel.cs)
+        public const uint BtnPreviousGear = 1, BtnNextGear = 2, BtnDPadUp = 4, BtnDPadDown = 8, BtnDPadLeft = 16, BtnDPadRight = 32;
+        public static uint Button(int n) => 64u << (n - 1);   // Button1..Button26
 
         public struct State
         {

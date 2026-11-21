@@ -197,7 +197,7 @@ Add `-Development` to the script for a development build. That build can attach 
 
 iPadOS gives apps no access to a racing wheel plugged into the iPad (KNOWN_ISSUES L1). Plug the G923 into the Windows PC instead. The bridge streams it to the iPad over Wi-Fi and plays the game's force feedback on the wheel.
 
-1. Plug the G923 into the PC (USB) and power it. Close any other game using the wheel.
+1. Plug the G923 into the PC (USB) and power it. Close any other game using the wheel. **Logitech G HUB must be installed.** The PlayStation version of the G923 powers up in PlayStation compatibility mode (USB ID `046D:C267`): a 14-button gamepad with no steering, pedals or force feedback. G HUB switches it to PC mode (`046D:C266`). The bridge starts G HUB in the background when it sees compatibility mode. The switch lasts until the wheel is unplugged.
 2. On the iPad, open MASAR → **Input devices & wheel test**. It shows the address to use, for example `192.168.1.23`. Allow **Local Network** when iPadOS asks; if you missed the prompt, use Settings → Privacy & Security → Local Network → MASAR.
 3. On the PC, run (the address is remembered after the first time):
 
@@ -207,7 +207,16 @@ powershell -ExecutionPolicy Bypass -File E:\MASAR\tools\start-wheel-bridge.ps1 1
 
 4. The panel on the iPad turns **Connected**. Turn the wheel or press a pedal and it becomes the active input.
 
-Checks: `start-wheel-bridge.ps1 -TestForce` turns the rim right, then left; if it's reversed, add `-InvertForce`. Use `-Gain 0.6` for weaker force, or `-Simulate` to test the network without the wheel. Windows may ask to allow the bridge on private networks: allow it.
+G923 buttons in the game: paddles = gear up/down, Cross = camera, Square = handbrake, Circle = lights, Options = pause, D-pad up = performance overlay, D-pad down = automatic/manual. The bridge prints this legend when it starts.
+
+Checks:
+- `start-wheel-bridge.ps1 -TestForce` (hands off the rim) pushes it right, then left, at 25 % for half a second each. It measures where the rim went and saves the correct force direction.
+- `MasarWheelBridge.exe --probe 30` prints every axis and button as it changes (turn the wheel, press each pedal, press each button).
+- `-Gain 0.6` gives weaker force; `-Simulate` tests the network without the wheel.
+- If the steering is too fast or too slow, the operating range in G HUB isn't 900°: set it to 900°, or pass `--range <degrees>` to the bridge.
+- Windows may ask to allow the bridge on private networks: allow it.
+
+The wheel is read through DirectInput, which keeps working while the bridge window is in the background, and the force feedback goes through Logitech's driver. Settings are kept in `%APPDATA%\MASAR\wheel-bridge.json`: iPad address, gain, force direction, range, and the axis layout (`X,Y,Rz,S0` = wheel, throttle, brake, clutch).
 
 How it works: UDP on port 7780. The bridge sends wheel angle (degrees), pedals and buttons at 250 Hz. The game maps the rim 1:1 onto the current car's steering lock and sends back force feedback at about 100 Hz: self-aligning torque from the front tires, parking-speed scrub, and a soft stop at the car's steering lock. Forces drop to zero if the game pauses or the link goes quiet for 0.3 s. Wire format: `tools/wheel-bridge/Protocol.cs` and `game/Assets/Masar/Code/Input/NetworkWheel.cs`. Loopback self-test: `-executeMethod Masar.EditorTools.WheelBridgeSelfTest.Run`, with the bridge running in `-Simulate` mode against `127.0.0.1`.
 

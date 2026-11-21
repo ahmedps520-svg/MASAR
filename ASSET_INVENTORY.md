@@ -79,4 +79,6 @@ T001–T005 were downloaded on 2026-11-14 from ambientCG as 1K-JPG sets; T006–
 | XcodeGen (CI only) | latest via Homebrew | https://github.com/yonaskolb/XcodeGen | MIT | Generates the probe's Xcode project on the macOS runner. Not shipped |
 | Unity built-in font (LegacyRuntime) | bundled | Unity | Unity EULA | Phase 0 UI font (Latin only) |
 | Wheel bridge: .NET 11 + Windows.Gaming.Input (via `Microsoft.Windows.SDK.NET.Ref`, restored from nuget.org) | .NET 11 / Windows SDK 10.0.19041 | Microsoft | MIT (.NET, projections); Windows.Gaming.Input is part of Windows | `tools/wheel-bridge`, PC-side only. Not shipped in the iPad app |
+| Vortice.DirectInput (+ SharpGen.Runtime, SharpGen.Runtime.COM, Vortice.DirectX, Vortice.Mathematics) | 3.8.3 | https://github.com/amerkoleci/Vortice.Windows (nuget.org) | MIT | Wheel bridge only (DirectInput input + force feedback, 2026-11-21). PC-side, not shipped in the iPad app |
+| Logitech G HUB (owner-installed) | — | https://www.logitechg.com | Logitech EULA | Not redistributed. Its driver switches the G923 to PC mode and provides the DirectInput force feedback |
 | glTFast (`com.unity.cloud.gltfast`) | 6.20.0 | Unity Technologies | Apache 2.0 | Editor import of the glTF car models. The game ships the converted meshes, not the importer's output |

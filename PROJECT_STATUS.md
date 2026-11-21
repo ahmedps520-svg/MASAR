@@ -30,6 +30,7 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 
 | **Runs on the iPad Pro M5 (TestFlight build 11, 2026-11-21):** installs, launches, drives. Ultra at about 90 fps (owner's observation) | PERFORMANCE_REPORT.md (device numbers still to capture) |
 | **Wheel bridge (2026-11-21):** G923 → Windows PC → Wi-Fi → iPad, with force feedback from the simulation. Loopback test: 250 Hz, 0 lost, 3–4 ms round trip | BUILD_INSTRUCTIONS §5a, `WheelBridgeSelfTest` |
+| **Wheel bridge on the real G923 (2026-11-21):** the first owner test showed only Cross and Square working (wheel in PlayStation compatibility mode). Bridge rebuilt on DirectInput + G HUB's PC mode: steering read in the background, force feedback measured in both directions (+148° / −265° at 25 %), pedals 0 at rest | `MasarWheelBridge --test-ffb`, `--probe` |
 
 ## In progress
 

@@ -22,6 +22,10 @@ namespace Masar.WheelBridge
             public string Ipad { get; set; } = "";
             public double Gain { get; set; } = 1.0;
             public bool InvertForce { get; set; }
+            /// <summary>The wheel's lock-to-lock range set in G HUB ("Operating range"); 900 is G HUB's default.</summary>
+            public double RangeDeg { get; set; } = 900;
+            /// <summary>DirectInput axes for wheel, throttle, brake, clutch.</summary>
+            public string Axes { get; set; } = "X,Y,Rz,S0";
         }
 
         static readonly string ConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MASAR", "wheel-bridge.json");
@@ -40,17 +44,21 @@ namespace Masar.WheelBridge
 
         static int Main(string[] args)
         {
+            try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
             var cfg = LoadConfig();
             bool simulate = args.Contains("--simulate"), testFfb = args.Contains("--test-ffb");
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "--gain" && i + 1 < args.Length && double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g)) cfg.Gain = Math.Clamp(g, 0, 2);
                 if (args[i] == "--invert-force") cfg.InvertForce = true;
-                if (!args[i].StartsWith("--") && IPAddress.TryParse(args[i], out _)) cfg.Ipad = args[i];
+                if (args[i] == "--range" && i + 1 < args.Length && double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var rg)) cfg.RangeDeg = Math.Clamp(rg, 180, 1080);
+                // Only a dotted IPv4 address counts ("4" would otherwise parse as 0.0.0.4)
+                if (!args[i].StartsWith("--") && args[i].Count(ch => ch == '.') == 3 && IPAddress.TryParse(args[i], out _)) cfg.Ipad = args[i];
             }
 
             Console.WriteLine("MASAR Wheel Bridge");
             Console.WriteLine("------------------");
+            if (args.Contains("--probe")) return Probe(args);
             if (!IPAddress.TryParse(cfg.Ipad, out var ipad))
             {
                 Console.WriteLine("Type the iPad address shown in the game (Input devices & wheel test), e.g. 192.168.1.23:");
@@ -61,7 +69,7 @@ namespace Masar.WheelBridge
             }
             SaveConfig(cfg);
 
-            IWheel wheel = simulate ? new SimulatedWheel() : FindWheel();
+            IWheel wheel = simulate ? new SimulatedWheel() : FindWheel(cfg);
             if (wheel == null)
             {
                 Console.WriteLine("No racing wheel found. Check that the G923 is plugged into this PC (and that Logitech G HUB sees it),");
@@ -70,7 +78,8 @@ namespace Masar.WheelBridge
             }
             Console.WriteLine($"Wheel: {wheel.Name} ({wheel.Kind}), range {wheel.RangeDeg:F0}° lock-to-lock, force feedback: {(wheel.HasFfb ? "yes" : "no")}");
             Console.WriteLine($"Sending to {ipad}:{Protocol.GamePort} at 250 Hz. Force gain {cfg.Gain:F2}{(cfg.InvertForce ? " (inverted)" : "")}. Ctrl+C to stop.");
-            if (testFfb) { TestFfb(wheel); return 0; }
+            if (wheel is DiWheel dw) Console.WriteLine(dw.Legend);
+            if (testFfb) { TestFfb(wheel, cfg); return 0; }
 
             var target = new IPEndPoint(ipad, Protocol.GamePort);
             using var sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
@@ -186,20 +195,73 @@ namespace Masar.WheelBridge
             }
         }
 
-        static void TestFfb(IWheel wheel)
+        /// <summary>
+        /// --test-ffb: pushes the rim right, then left, at a gentle 25 % and measures where it went.
+        /// The measured direction is saved (InvertForce), so the game's forces always turn the rim the right way.
+        /// </summary>
+        static void TestFfb(IWheel wheel, Config cfg)
         {
             if (!wheel.HasFfb) { Console.WriteLine("This wheel reports no force feedback motor."); return; }
-            Console.WriteLine("Force test: the rim should turn RIGHT for 1 s, then LEFT for 1 s. If it's the other way round, run with --invert-force.");
-            wheel.SetForces(0.35, 0, 0); Thread.Sleep(1000);
-            wheel.SetForces(-0.35, 0, 0); Thread.Sleep(1000);
+            Console.WriteLine("Force test: hands off the wheel. It turns right for half a second, then left.");
+            Thread.Sleep(1200);
+            float Settle() { float a = 0; for (int i = 0; i < 10; i++) { a = wheel.Read().WheelDeg; Thread.Sleep(10); } return a; }
+            float start = Settle();
+            float Push(double c)
+            {
+                float from = wheel.Read().WheelDeg, peak = 0;
+                long t0 = Clock.ElapsedMilliseconds;
+                while (Clock.ElapsedMilliseconds - t0 < 500)
+                {
+                    wheel.SetForces(c, 0, 0);
+                    float d = wheel.Read().WheelDeg - from;
+                    if (Math.Abs(d) > Math.Abs(peak)) peak = d;
+                    Thread.Sleep(4);
+                }
+                wheel.SetForces(0, 0, 0.3);   // brake the rim
+                Thread.Sleep(300);
+                return peak;
+            }
+            float right = Push(+0.25), left = Push(-0.25);
+            wheel.SetForces(0, 0, 0);
             wheel.StopForces();
-            Console.WriteLine("Done.");
+            var after = wheel.Read();
+            Console.WriteLine($"Rim at {start:F1}° to start. Push right moved it {right:+0.0;-0.0}°, push left moved it {left:+0.0;-0.0}°.");
+            Console.WriteLine($"Pedals at rest (feet off): throttle {after.Throttle:F2}  brake {after.Brake:F2}  clutch {after.Clutch:F2} (all should be 0.00).");
+            if (Math.Abs(right) < 3 && Math.Abs(left) < 3)
+            {
+                Console.WriteLine("The rim did not move: either it was held, the force feedback is off in G HUB, or the wheel angle isn't being read.");
+                return;
+            }
+            bool inverted = right < 0 && left > 0;
+            if (right > 0 && left < 0 || inverted)
+            {
+                cfg.InvertForce = inverted;
+                SaveConfig(cfg);
+                Console.WriteLine(inverted ? "The wheel's force axis is reversed: saved InvertForce = true. Game forces will be flipped." : "Force direction correct (saved).");
+            }
+            else Console.WriteLine("Inconsistent result (rim held or at its stop?): run the test again with hands off and the rim centered.");
         }
 
         // ------------------------------------------------------------------ wheel discovery
 
-        static IWheel FindWheel()
+        static IWheel FindWheel(Config cfg)
         {
+            // A G923 / G29 for PlayStation starts in PlayStation compatibility mode (PID C267 / C294):
+            // a plain gamepad without steering or force feedback. G HUB switches it to PC mode.
+            if (DiWheel.PsCompatModePresent())
+            {
+                Console.WriteLine("The wheel is in PlayStation compatibility mode. Starting Logitech G HUB to switch it to PC mode...");
+                StartGHub();
+                for (int i = 0; i < 40 && DiWheel.PsCompatModePresent(); i++) Thread.Sleep(500);
+                if (DiWheel.PsCompatModePresent())
+                    Console.WriteLine("Still in compatibility mode: open Logitech G HUB, wait until it shows the wheel, then run the bridge again.");
+                else Thread.Sleep(1500);   // let Windows finish enumerating the wheel in its new mode
+            }
+
+            var di = DiWheel.TryCreate((float)cfg.RangeDeg, cfg.Axes, out var why);
+            if (di != null) return di;
+            Console.WriteLine($"DirectInput: {why}. Trying Windows.Gaming.Input.");
+
             // Controllers are enumerated asynchronously after start-up: give Windows a moment
             for (int i = 0; i < 30; i++)
             {
@@ -209,6 +271,70 @@ namespace Masar.WheelBridge
             foreach (var raw in RawGameController.RawGameControllers)
                 if (raw.AxisCount >= 3) return new RawWheel(raw);
             return null;
+        }
+
+        /// <summary>--probe [seconds]: lists every game controller Windows sees, then prints each one's raw
+        /// axes, buttons and switches whenever they change, so a wheel's real layout can be read off.</summary>
+        static int Probe(string[] args)
+        {
+            int seconds = 20;
+            int ix = Array.IndexOf(args, "--probe");
+            if (ix + 1 < args.Length && int.TryParse(args[ix + 1], out var sv)) seconds = sv;
+            Thread.Sleep(1500);   // controllers are enumerated asynchronously
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            Console.WriteLine($"RacingWheels: {RacingWheel.RacingWheels.Count}, Gamepads: {Gamepad.Gamepads.Count}, RawGameControllers: {RawGameController.RawGameControllers.Count}");
+            foreach (var w in RacingWheel.RacingWheels)
+            {
+                var raw = RawGameController.FromGameController(w);
+                Console.WriteLine($"  RacingWheel '{raw?.DisplayName}' VID {raw?.HardwareVendorId:X4} PID {raw?.HardwareProductId:X4} maxAngle {w.MaxWheelAngle} clutch {w.HasClutch} handbrake {w.HasHandbrake} shifter {w.HasPatternShifter} motor {(w.WheelMotor != null)}");
+            }
+            var list = RawGameController.RawGameControllers.ToList();
+            for (int i = 0; i < list.Count; i++)
+            {
+                var c = list[i];
+                Console.WriteLine($"  Raw[{i}] '{c.DisplayName}' VID {c.HardwareVendorId:X4} PID {c.HardwareProductId:X4} axes {c.AxisCount} buttons {c.ButtonCount} switches {c.SwitchCount} ffbMotors {c.ForceFeedbackMotors.Count} id {c.NonRoamableId}");
+            }
+            Console.WriteLine($"Live for {seconds} s: turn the wheel, press each pedal, press buttons one at a time.");
+            if (!args.Contains("--wgi"))
+            {
+                DiWheel.Probe(seconds, () => Clock.ElapsedMilliseconds);
+                return 0;
+            }
+            var prev = new string[list.Count];
+            string prevWheel = "";
+            long end = Clock.ElapsedMilliseconds + seconds * 1000L;
+            while (Clock.ElapsedMilliseconds < end)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var c = list[i];
+                    var b = new bool[c.ButtonCount]; var sw = new GameControllerSwitchPosition[c.SwitchCount]; var ax = new double[c.AxisCount];
+                    c.GetCurrentReading(b, sw, ax);
+                    var pressed = string.Join(",", Enumerable.Range(0, b.Length).Where(k => b[k]));
+                    var key = $"{string.Join(" ", ax.Select(a => Math.Round(a * 50)))}|{pressed}|{string.Join(",", sw)}";
+                    if (key == prev[i]) continue;
+                    prev[i] = key;
+                    Console.WriteLine($"{Clock.ElapsedMilliseconds,7} Raw[{i}] axes [{string.Join(" ", ax.Select(a => a.ToString("F3", inv)))}] buttons [{pressed}] switches [{string.Join(",", sw)}]");
+                }
+                foreach (var w in RacingWheel.RacingWheels)
+                {
+                    var r = w.GetCurrentReading();
+                    var key = $"{Math.Round(r.Wheel * 50)} {Math.Round(r.Throttle * 50)} {Math.Round(r.Brake * 50)} {Math.Round(r.Clutch * 50)} {r.Buttons}";
+                    if (key == prevWheel) continue;
+                    prevWheel = key;
+                    Console.WriteLine($"{Clock.ElapsedMilliseconds,7} RacingWheel wheel {r.Wheel:F3} thr {r.Throttle:F3} brk {r.Brake:F3} clu {r.Clutch:F3} buttons {r.Buttons}");
+                }
+                Thread.Sleep(20);
+            }
+            return 0;
+        }
+
+        static void StartGHub()
+        {
+            if (Process.GetProcessesByName("lghub_agent").Length > 0) return;
+            var exe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LGHUB", "lghub.exe");
+            if (!File.Exists(exe)) { Console.WriteLine("Logitech G HUB is not installed (it is needed for the wheel's PC mode and force feedback)."); return; }
+            try { Process.Start(new ProcessStartInfo(exe, "--background") { UseShellExecute = true }); } catch { }
         }
 
         static Config LoadConfig()
