@@ -88,7 +88,7 @@ What this proves and what it doesn't:
 
 | Date | Build | Tier | Scene | FPS avg / 1% | CPU main | GPU | Footprint / available | Thermal after 10 min | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — | — | Pending: first TestFlight build |
+| 2026-11-21 | TestFlight build 11 | Ultra | Test block, free drive | **≈90 fps** (owner's observation: "smooth") | not captured | not captured | not captured | not captured | First run on the device. Frame-cap setting not recorded. Overlay/CSV numbers still needed (diagnostics upload not configured yet) |
 
 ## Physics regression results
 

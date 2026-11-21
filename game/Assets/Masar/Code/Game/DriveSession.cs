@@ -77,6 +77,7 @@ namespace Masar.Game
             var router = GameServices.Instance.Input;
             v.Input = router;
             if (v.Simulation != null) v.Simulation.Drivetrain.Mode = SettingsStore.Current.transmission;
+            router.VehicleSteeringLockDeg = v.Definition.steering.steeringWheelLockDegrees;
             cameraRig.SetTarget(v);
             if (_hud) _hud.vehicle = v;
             GetComponentsInScene(_renderers);
@@ -95,6 +96,10 @@ namespace Masar.Game
 
             vehicle.Input = router;
             vehicle.Simulation.Drivetrain.Mode = s.transmission;
+            router.VehicleSteeringLockDeg = vehicle.Definition.steering.steeringWheelLockDegrees;
+            var ffb = gameObject.AddComponent<WheelForceFeedback>();
+            ffb.Vehicle = () => vehicle;
+            ffb.Paused = () => _paused;
 
             cameraRig.Input = router;
             cameraRig.settings = s.cameras;

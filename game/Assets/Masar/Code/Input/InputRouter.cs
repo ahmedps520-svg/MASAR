@@ -31,9 +31,21 @@ namespace Masar.Input
         public InputDeviceKind ActiveKind { get; private set; } = InputDeviceKind.Keyboard;
         public Joystick ActiveWheel { get; private set; }
 
+        /// <summary>
+        /// The current car's steering-wheel angle from center to full lock (degrees). A bridged wheel
+        /// maps 1:1 onto it: turning the rim 200° turns the car's wheel 200°.
+        /// </summary>
+        public float VehicleSteeringLockDeg { get; set; } = 450f;
+
         private float _kbSteer;
-        private float _lastKeyboard = -100f, _lastGamepad = -100f, _lastWheel = -100f;
-        private float _wheelBaselineSteer = float.NaN;
+        private float _lastKeyboard = -100f, _lastGamepad = -100f, _lastWheel = -100f, _lastBridge = -100f;
+        private float _wheelBaselineSteer = float.NaN, _bridgeBaselineDeg = float.NaN;
+        private uint _bridgePrevButtons;
+        private NetworkWheel.State _bridge;
+        private bool _bridgeLive;
+
+        private void OnEnable() => NetworkWheel.Start();
+        private void OnDisable() => NetworkWheel.Stop();
 
         private void Update()
         {
@@ -41,6 +53,7 @@ namespace Masar.Input
             var mouse = Mouse.current;
             var pad = Gamepad.current;
             ActiveWheel = FindWheel();
+            _bridgeLive = NetworkWheel.TryGetState(out _bridge, out float bridgeAge) && bridgeAge < 0.5f;
 
             DetectActivity(kb, pad, ActiveWheel);
 
@@ -102,6 +115,21 @@ namespace Masar.Input
                 actions.Pause |= Pressed(ActiveWheel, wheelMapping.pauseButton);
             }
 
+            // ---------------- bridged wheel buttons (Windows.Gaming.Input layout, forwarded by the bridge)
+            if (_bridgeLive)
+            {
+                uint b = _bridge.Buttons, down = b & ~_bridgePrevButtons;
+                actions.ShiftUp |= (down & NetworkWheel.BtnNextGear) != 0;          // right paddle
+                actions.ShiftDown |= (down & NetworkWheel.BtnPreviousGear) != 0;    // left paddle
+                actions.NextCamera |= (down & NetworkWheel.Button(1)) != 0;
+                actions.ToggleHeadlights |= (down & NetworkWheel.Button(3)) != 0;
+                actions.Pause |= (down & NetworkWheel.Button(4)) != 0;
+                actions.TogglePerfOverlay |= (down & NetworkWheel.BtnDPadUp) != 0;
+                actions.ToggleTransmissionMode |= (down & NetworkWheel.BtnDPadDown) != 0;
+                _bridgePrevButtons = b;
+            }
+            else _bridgePrevButtons = 0;
+
             // ---------------- touch requests
             if (TouchInputState.RequestShiftUp) { actions.ShiftUp = true; TouchInputState.RequestShiftUp = false; }
             if (TouchInputState.RequestShiftDown) { actions.ShiftDown = true; TouchInputState.RequestShiftDown = false; }
@@ -122,6 +150,7 @@ namespace Masar.Input
             {
                 case InputDeviceKind.Gamepad when pad != null: c = ReadGamepad(pad); break;
                 case InputDeviceKind.Wheel when ActiveWheel != null: c = ReadWheel(ActiveWheel); break;
+                case InputDeviceKind.Bridge when _bridgeLive: c = ReadBridge(_bridge); break;
                 case InputDeviceKind.Touch: c = ReadTouch(); break;
                 default: c = ReadKeyboard(kb); break;
             }
@@ -197,6 +226,24 @@ namespace Masar.Input
             return c;
         }
 
+        private DriverControls ReadBridge(in NetworkWheel.State w)
+        {
+            var cal = wheelCalibration;
+            float lockDeg = Mathf.Max(30f, VehicleSteeringLockDeg);
+            var c = new DriverControls
+            {
+                Source = InputDeviceKind.Bridge,
+                SteerIsAbsolute = true,
+                Steer = cal.ShapeSteer(Mathf.Clamp(w.WheelDeg / lockDeg, -1f, 1f)),
+                Throttle = cal.ShapePedal(w.Throttle, 0f, 1f, cal.invertThrottle),
+                Brake = cal.ShapePedal(w.Brake, 0f, 1f, cal.invertBrake),
+                HasClutchPedal = w.HasClutch,
+                Handbrake = (w.Buttons & NetworkWheel.Button(2)) != 0 ? 1f : 0f,
+            };
+            if (c.HasClutchPedal) c.Clutch = cal.ShapePedal(w.Clutch, 0f, 1f, cal.invertClutch);
+            return c;
+        }
+
         private static DriverControls ReadTouch()
         {
             return new DriverControls
@@ -228,11 +275,19 @@ namespace Masar.Input
                 if (Mathf.Abs(steer - _wheelBaselineSteer) > 0.03f) { _lastWheel = now; _wheelBaselineSteer = steer; }
             }
             else _wheelBaselineSteer = float.NaN;
+            if (_bridgeLive)
+            {
+                if (float.IsNaN(_bridgeBaselineDeg)) _bridgeBaselineDeg = _bridge.WheelDeg;
+                if (Mathf.Abs(_bridge.WheelDeg - _bridgeBaselineDeg) > 2f || _bridge.Throttle > 0.1f || _bridge.Brake > 0.1f)
+                { _lastBridge = now; _bridgeBaselineDeg = _bridge.WheelDeg; }
+            }
+            else _bridgeBaselineDeg = float.NaN;
 
             float best = _lastKeyboard;
             var kind = InputDeviceKind.Keyboard;
             if (_lastGamepad > best) { best = _lastGamepad; kind = InputDeviceKind.Gamepad; }
             if (_lastWheel > best) { best = _lastWheel; kind = InputDeviceKind.Wheel; }
+            if (_bridgeLive && _lastBridge > best) { best = _lastBridge; kind = InputDeviceKind.Bridge; }
             if (TouchInputState.LastActivityTime > best) { kind = InputDeviceKind.Touch; }
             ActiveKind = kind;
         }

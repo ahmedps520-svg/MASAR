@@ -112,6 +112,9 @@ namespace Masar.EditorTools
             root.SetBoolean("LSSupportsOpeningDocumentsInPlace", true);
             root.SetBoolean("ITSAppUsesNonExemptEncryption", false);
             root.SetBoolean("GCSupportsControllerUserInteraction", true);
+            // The wheel bridge streams the racing wheel from a PC over the local network
+            root.SetString("NSLocalNetworkUsageDescription",
+                "MASAR receives your racing wheel from the MASAR Wheel Bridge running on a computer on this network, and sends force feedback back to it.");
             var profiles = root.CreateArray("GCSupportedGameControllers");
             profiles.AddDict().SetString("ProfileName", "ExtendedGamepad");
             plist.WriteToFile(plistPath);

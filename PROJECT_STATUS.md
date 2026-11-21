@@ -28,6 +28,9 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | Realism pass (2026-11-19/20): scanned roads, HDRI lighting, geometric date palms, facade weathering, MSAA/STP fix | Review screenshots, PERFORMANCE_REPORT.md |
 | **Car selector (2026-11-20):** 5 cars (test sedan + 4 imported Sketchfab models: Jetta GLI, Elantra N, Aventador SVJ, Aventador Mansory). Main-menu and pause-menu selector with rendered thumbnails and license credits. A generic importer finds wheels, steering, lamps and colliders, and measures wheelbase, track and tire radius | `ImportedCarBuilder.cs`. Imported cars are for **private testing only** (ASSET_INVENTORY V001–V004, KNOWN_ISSUES G1) |
 
+| **Runs on the iPad Pro M5 (TestFlight build 11, 2026-11-21):** installs, launches, drives. Ultra at about 90 fps (owner's observation) | PERFORMANCE_REPORT.md (device numbers still to capture) |
+| **Wheel bridge (2026-11-21):** G923 → Windows PC → Wi-Fi → iPad, with force feedback from the simulation. Loopback test: 250 Hz, 0 lost, 3–4 ms round trip | BUILD_INSTRUCTIONS §5a, `WheelBridgeSelfTest` |
+
 ## In progress
 
 Nothing. Phase 0 work that doesn't need the iPad is complete.

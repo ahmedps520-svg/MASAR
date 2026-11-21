@@ -27,6 +27,7 @@ namespace Masar.Game.UI
             UIKit.Anchor(title.rectTransform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(36, -80), new Vector2(-36, -24));
 
             panel._text = UIKit.Label(bg.transform, "", 22, UIKit.Text, TextAnchor.UpperLeft);
+            panel._text.supportRichText = true;
             UIKit.Anchor(panel._text.rectTransform, Vector2.zero, Vector2.one, new Vector2(36, 110), new Vector2(-36, -96));
 
             var close = UIKit.Button(bg.transform, "Close", onClose, 28, UIKit.Accent);
@@ -42,6 +43,34 @@ namespace Masar.Game.UI
 
             _sb.Clear();
             _sb.Append("Active driving input: ").Append(router != null ? router.ActiveKind.ToString() : "?").Append("\n\n");
+
+            // ---- wheel bridge (how the G923 reaches the iPad: wheel -> Windows PC -> Wi-Fi -> iPad)
+            _sb.Append("<b>Wheel bridge</b>  (G923 plugged into a Windows PC on the same Wi-Fi, running MasarWheelBridge.exe)\n");
+            if (!NetworkWheel.Running)
+                _sb.Append("  Receiver not running").Append(NetworkWheel.Error != null ? ": " + NetworkWheel.Error : "").Append('\n');
+            else
+            {
+                _sb.Append("  Type this address into the bridge:  <b>").Append(string.IsNullOrEmpty(NetworkWheel.LocalAddress) ? "(no Wi-Fi address)" : NetworkWheel.LocalAddress)
+                   .Append("</b>   (port ").Append(NetworkWheel.Port).Append(")\n");
+                if (NetworkWheel.TryGetState(out var w, out float age) && age < 0.5f)
+                {
+                    _sb.Append("  <color=#3DDC97>Connected</color> to ").Append(NetworkWheel.BridgeAddress)
+                       .Append(w.Simulated ? "  (SIMULATED wheel)" : "")
+                       .Append("   ").Append(NetworkWheel.PacketRate.ToString("F0")).Append(" Hz,  round trip ")
+                       .Append(float.IsNaN(NetworkWheel.RoundTripMs) ? "-" : NetworkWheel.RoundTripMs.ToString("F0") + " ms")
+                       .Append(",  lost ").Append(NetworkWheel.LostPackets).Append('\n');
+                    _sb.Append("  rim ").Append(w.WheelDeg.ToString("+0.0;-0.0")).Append("° of ±").Append((w.WheelRangeDeg * 0.5f).ToString("F0"))
+                       .Append("°   throttle ").Append(w.Throttle.ToString("F2")).Append("   brake ").Append(w.Brake.ToString("F2"))
+                       .Append("   clutch ").Append(w.HasClutch ? w.Clutch.ToString("F2") : "-")
+                       .Append("   buttons ").Append(w.Buttons.ToString("X8"))
+                       .Append("   force feedback ").Append(w.HasFfb ? "yes" : "no").Append('\n');
+                }
+                else if (!float.IsInfinity(age))
+                    _sb.Append("  <color=#FFB833>Lost</color>: last packet ").Append(age.ToString("F1")).Append(" s ago\n");
+                else
+                    _sb.Append("  Waiting for the bridge... If it is running and nothing arrives, check Settings > Privacy > Local Network > MASAR.\n");
+            }
+            _sb.Append("  Buttons: paddles = gears, A = camera, B = handbrake, X = lights, Y = pause, D-pad up = overlay, down = auto/manual\n\n");
 
             var devices = InputSystem.devices;
             if (devices.Count == 0) _sb.Append("No input devices reported by the engine.\n");
@@ -71,9 +100,9 @@ namespace Masar.Game.UI
                 }
             }
 
-            _sb.Append("\nForce feedback: NOT implemented in Phase 0. No FFB settings are shown until real force reaches the wheel.\n");
+            _sb.Append("\nForce feedback: through the wheel bridge only (aligning torque, parking-speed scrub, soft lock at the car's steering lock). Strength: bridge --gain.\n");
 #if UNITY_IOS && !UNITY_EDITOR
-            _sb.Append("iPadOS: wheels are only visible here if the GameController framework exposes them. Apple documents no racing-wheel API on iPadOS (see docs/research).\n");
+            _sb.Append("iPadOS: a wheel plugged straight into the iPad is not visible to apps (no public racing-wheel API on iPadOS). Use the wheel bridge above.\n");
 #else
             _sb.Append("Desktop: wheels appear as Joystick devices. Turn the wheel and press each pedal to see which axis moves, then record it in WheelMapping.\n");
 #endif

@@ -193,6 +193,24 @@ gh run list --repo ahmedps520-svg/MASAR --limit 5
 
 Add `-Development` to the script for a development build. That build can attach the Unity Profiler over Wi-Fi from the Windows editor, which still needs confirming on the device.
 
+## 5a. Racing wheel on the iPad: the wheel bridge
+
+iPadOS gives apps no access to a racing wheel plugged into the iPad (KNOWN_ISSUES L1). Plug the G923 into the Windows PC instead. The bridge streams it to the iPad over Wi-Fi and plays the game's force feedback on the wheel.
+
+1. Plug the G923 into the PC (USB) and power it. Close any other game using the wheel.
+2. On the iPad, open MASAR → **Input devices & wheel test**. It shows the address to use, for example `192.168.1.23`. Allow **Local Network** when iPadOS asks; if you missed the prompt, use Settings → Privacy & Security → Local Network → MASAR.
+3. On the PC, run (the address is remembered after the first time):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\MASAR\tools\start-wheel-bridge.ps1 192.168.1.23
+```
+
+4. The panel on the iPad turns **Connected**. Turn the wheel or press a pedal and it becomes the active input.
+
+Checks: `start-wheel-bridge.ps1 -TestForce` turns the rim right, then left; if it's reversed, add `-InvertForce`. Use `-Gain 0.6` for weaker force, or `-Simulate` to test the network without the wheel. Windows may ask to allow the bridge on private networks: allow it.
+
+How it works: UDP on port 7780. The bridge sends wheel angle (degrees), pedals and buttons at 250 Hz. The game maps the rim 1:1 onto the current car's steering lock and sends back force feedback at about 100 Hz: self-aligning torque from the front tires, parking-speed scrub, and a soft stop at the car's steering lock. Forces drop to zero if the game pauses or the link goes quiet for 0.3 s. Wire format: `tools/wheel-bridge/Protocol.cs` and `game/Assets/Masar/Code/Input/NetworkWheel.cs`. Loopback self-test: `-executeMethod Masar.EditorTools.WheelBridgeSelfTest.Run`, with the bridge running in `-Simulate` mode against `127.0.0.1`.
+
 ## 6. Known pipeline limits
 
 | Limit | Impact | Mitigation |

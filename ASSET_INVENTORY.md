@@ -78,4 +78,5 @@ T001–T005 were downloaded on 2026-11-14 from ambientCG as 1K-JPG sets; T006–
 | Unity 6.3 LTS engine + URP + Input System + uGUI | 6000.3.28f1 / bundled | Unity Technologies | Unity Personal (free under US$200k revenue/funding) | Engine runtime. The Xcode export is encrypted before upload because the repo is public |
 | XcodeGen (CI only) | latest via Homebrew | https://github.com/yonaskolb/XcodeGen | MIT | Generates the probe's Xcode project on the macOS runner. Not shipped |
 | Unity built-in font (LegacyRuntime) | bundled | Unity | Unity EULA | Phase 0 UI font (Latin only) |
+| Wheel bridge: .NET 11 + Windows.Gaming.Input (via `Microsoft.Windows.SDK.NET.Ref`, restored from nuget.org) | .NET 11 / Windows SDK 10.0.19041 | Microsoft | MIT (.NET, projections); Windows.Gaming.Input is part of Windows | `tools/wheel-bridge`, PC-side only. Not shipped in the iPad app |
 | glTFast (`com.unity.cloud.gltfast`) | 6.20.0 | Unity Technologies | Apache 2.0 | Editor import of the glTF car models. The game ships the converted meshes, not the importer's output |

@@ -90,3 +90,7 @@ game/Assets/Resources/PerformanceTestRun*
 game/Assets/StreamingAssets/build_info.json
 game/Assets/StreamingAssets/build_info.json.meta
 
+
+# ---- Wheel bridge build output ----
+tools/wheel-bridge/bin/
+tools/wheel-bridge/obj/
