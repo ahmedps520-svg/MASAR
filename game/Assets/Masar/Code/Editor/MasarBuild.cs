@@ -28,6 +28,7 @@ namespace Masar.EditorTools
             bool dev = args.Contains("-development");
             string buildNumber = ArgValue(args, "-buildNumber") ?? "1";
             PlayerSettings.iOS.buildNumber = buildNumber;
+            MasarProjectSetup.ConfigureIcons();   // App Store Connect rejects uploads without the 1024 px icon
             WriteBuildInfo(buildNumber);
 
             string outDir = Path.Combine(RepoRoot, "build", "ios-xcode");

@@ -65,8 +65,41 @@ namespace Masar.EditorTools
 
         // ------------------------------------------------------------------ player
 
+        public const string IconPath = "Assets/Masar/Art/Icon/AppIcon.png";
+
+        /// <summary>
+        /// App icon (self-made, tools/make-icon.ps1) for every icon kind, including the 1024 px
+        /// App Store icon that App Store Connect requires before it accepts an upload.
+        /// </summary>
+        public static void ConfigureIcons()
+        {
+            AssetDatabase.ImportAsset(IconPath);
+            var imp = AssetImporter.GetAtPath(IconPath) as TextureImporter;
+            if (imp == null) { Debug.LogWarning($"[MASAR] App icon missing at {IconPath}. Run tools/make-icon.ps1"); return; }
+            imp.textureType = TextureImporterType.Default;
+            imp.alphaSource = TextureImporterAlphaSource.None;   // App Store icons must be opaque
+            imp.mipmapEnabled = false;
+            imp.npotScale = TextureImporterNPOTScale.None;
+            imp.maxTextureSize = 1024;
+            imp.textureCompression = TextureImporterCompression.Uncompressed;
+            imp.isReadable = true;
+            imp.SaveAndReimport();
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+            PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { tex }, IconKind.Any);
+            int n = 0;
+            foreach (var kind in PlayerSettings.GetSupportedIconKinds(NamedBuildTarget.iOS))
+            {
+                var icons = PlayerSettings.GetPlatformIcons(NamedBuildTarget.iOS, kind);
+                foreach (var icon in icons)
+                    for (int layer = 0; layer < icon.maxLayerCount; layer++) { icon.SetTexture(tex, layer); n++; }
+                PlayerSettings.SetPlatformIcons(NamedBuildTarget.iOS, kind, icons);
+            }
+            Debug.Log($"[MASAR] App icon set ({n} iOS icon slots)");
+        }
+
         private static void ConfigurePlayer()
         {
+            ConfigureIcons();
             PlayerSettings.companyName = "MASAR Project";
             PlayerSettings.productName = "MASAR";
             PlayerSettings.bundleVersion = "0.1.0";

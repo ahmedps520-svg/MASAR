@@ -18,6 +18,7 @@ Every asset in the repository must have a row here before it is committed. If an
 | ID | Asset | Type | Source | License | Attribution | Added | Verified |
 |---|---|---|---|---|---|---|---|
 | G001 | MASAR Test Sedan (generic, unbranded) | Procedural mesh (placeholder) | Self-made: `Assets/Masar/Code/Editor/TestCarBuilder.cs` | Project-owned | — | 2026-11-14 | ✓ |
+| G003 | MASAR app icon (asphalt, lane line, kerb stripes, name) | 1024² PNG | Self-made: `tools/make-icon.ps1` → `Assets/Masar/Art/Icon/AppIcon.png` | Project-owned | — | 2026-11-21 | ✓ |
 | G002 | Jeddah test block (roads, kerbs, buildings, villas, mosque, palms, lights, signal props) | Procedural meshes | Self-made: `TestBlockBuilder.cs`, `CityKit.cs` | Project-owned | — | 2026-11-14 | ✓ |
 
 ### Selectable cars (third-party, local only, private testing)
