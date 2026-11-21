@@ -121,9 +121,37 @@ def main():
     if st in (200, 201):
         print("Tester invited to the internal group. Apple emails a TestFlight invite.")
         return 0
-    print(f"::error::Could not add the tester to the internal group: {errors_text(t)}")
-    print("Internal testers must be App Store Connect users of this team; use the account holder's Apple ID email.")
-    return 1
+    print(f"::warning::TESTER_EMAIL could not be added ({errors_text(t)}). Internal testers must be "
+          "App Store Connect users of this team; falling back to the team's account holder.")
+    # Fallback: the account holder (the developer account's own Apple ID). Never printed: CI logs are public.
+    st, users = call("GET", "/users?limit=200")
+    holder = None
+    if st == 200:
+        for u in users.get("data", []):
+            roles = u.get("attributes", {}).get("roles", []) or []
+            if "ACCOUNT_HOLDER" in roles:
+                holder = u
+                break
+    if holder is None:
+        print(f"::warning::Could not read the team's users ({st}). The build is in TestFlight: add yourself to the "
+              f"'{group_name}' group in App Store Connect > TestFlight.")
+        return 0
+    a = holder["attributes"]
+    st, existing = call("GET", f"/betaTesters?filter[email]={urllib.request.quote(a.get('username', ''))}&filter[betaGroups]={group_id}")
+    if st == 200 and existing.get("data"):
+        print("Account holder already in the internal group. The new build is available in TestFlight.")
+        return 0
+    st, t = call("POST", "/betaTesters", {"data": {"type": "betaTesters",
+                 "attributes": {"email": a.get("username"), "firstName": a.get("firstName") or "MASAR",
+                                "lastName": a.get("lastName") or "Tester"},
+                 "relationships": {"betaGroups": {"data": [{"type": "betaGroups", "id": group_id}]}}}})
+    if st in (200, 201):
+        print("Account holder added to the internal group. The build appears in the TestFlight app on devices "
+              "signed in with that Apple ID (Apple also emails an invite).")
+        return 0
+    print(f"::warning::Could not add the account holder ({errors_text(t)}). The build is in TestFlight: add yourself "
+          f"to the '{group_name}' group in App Store Connect > TestFlight.")
+    return 0
 
 
 if __name__ == "__main__":
