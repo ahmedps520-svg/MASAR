@@ -15,6 +15,8 @@ namespace Masar.Game.UI
         private RectTransform _menuColumn;
         private GameObject _settings;
         private GameObject _devices;
+        private GameObject _cars;
+        private Button _carButton;
         private Image _progressFill;
         private Text _progressText;
 
@@ -45,6 +47,8 @@ namespace Masar.Game.UI
             UIKit.Anchor(_menuColumn, new Vector2(0.06f, 0.06f), new Vector2(0.36f, 0.58f), Vector2.zero, Vector2.zero);
             UIKit.VStack(_menuColumn, 18, new RectOffset(0, 0, 0, 0), false);
             UIKit.Size(UIKit.Button(_menuColumn, "Free drive: Jeddah test block", OnDrive, 32, UIKit.Accent), 92);
+            _carButton = UIKit.Button(_menuColumn, CarLabel(), ToggleCars, 30);
+            UIKit.Size(_carButton, 80);
             UIKit.Size(UIKit.Button(_menuColumn, "Settings", ToggleSettings, 30), 80);
             UIKit.Size(UIKit.Button(_menuColumn, "Input devices & wheel test", ToggleDevices, 30), 80);
             DiagnosticsButton.Create(_menuColumn, "main-menu", 80f);
@@ -57,9 +61,9 @@ namespace Masar.Game.UI
             UIKit.Anchor(card.rectTransform, new Vector2(0.42f, 0.12f), new Vector2(0.94f, 0.58f), Vector2.zero, Vector2.zero);
             var status = UIKit.Label(card.transform,
                 "<b>What this build is</b>\n" +
-                "A feasibility build: one test vehicle with custom physics, one small Jeddah-style street block, six cameras, input abstraction and live performance metrics.\n\n" +
+                "A feasibility build: selectable cars on one custom physics model, one small Jeddah-style street block, six cameras, input abstraction and live performance metrics.\n\n" +
                 "<b>Placeholders</b>\n" +
-                "Procedural test car and buildings (not final art). Traffic lights are visual props only. There is no traffic AI, pedestrians, audio, damage, driving school or Arabic UI yet.\n\n" +
+                "Imported cars are third-party models for private testing only (licenses in the asset inventory); their handling values are class estimates. Procedural buildings. Traffic lights are visual props only. There is no traffic AI, pedestrians, audio, damage, driving school or Arabic UI yet.\n\n" +
                 "<b>Logitech G923</b>\n" +
                 "Desktop: read as a generic HID joystick (mapping unverified). iPad: Apple documents no public racing-wheel API on iPadOS. No force feedback is implemented.",
                 24, UIKit.TextDim, TextAnchor.UpperLeft);
@@ -97,8 +101,25 @@ namespace Masar.Game.UI
             Debug.Log($"[MASAR] Scene '{driveScene}' loaded in {Time.realtimeSinceStartup - t0:F2}s");
         }
 
+        private static string CarLabel()
+        {
+            var e = CarCatalog.Instance != null ? CarCatalog.Instance.FindOrDefault(SettingsStore.Current.selectedCar) : null;
+            return "Car: " + (e != null ? e.displayName : "Test sedan");
+        }
+
+        public void ToggleCars()
+        {
+            if (_settings) { Destroy(_settings); _settings = null; }
+            if (_devices) { Destroy(_devices); _devices = null; }
+            if (_cars) { Destroy(_cars); _cars = null; return; }
+            _cars = CarSelectPanel.Create(_canvas.transform,
+                e => { UIKit.ButtonLabel(_carButton).text = CarLabel(); Destroy(_cars); _cars = null; },
+                () => { Destroy(_cars); _cars = null; }).gameObject;
+        }
+
         public void ToggleSettings()
         {
+            if (_cars) { Destroy(_cars); _cars = null; }
             if (_devices) { Destroy(_devices); _devices = null; }
             if (_settings) { Destroy(_settings); _settings = null; return; }
             _settings = SettingsPanel.Create(_canvas.transform, null, () => { Destroy(_settings); _settings = null; }).gameObject;
@@ -106,6 +127,7 @@ namespace Masar.Game.UI
 
         public void ToggleDevices()
         {
+            if (_cars) { Destroy(_cars); _cars = null; }
             if (_settings) { Destroy(_settings); _settings = null; }
             if (_devices) { Destroy(_devices); _devices = null; return; }
             _devices = DevicePanel.Create(_canvas.transform, () => { Destroy(_devices); _devices = null; }).gameObject;

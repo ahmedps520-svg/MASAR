@@ -20,6 +20,20 @@ Every asset in the repository must have a row here before it is committed. If an
 | G001 | MASAR Test Sedan (generic, unbranded) | Procedural mesh (placeholder) | Self-made: `Assets/Masar/Code/Editor/TestCarBuilder.cs` | Project-owned | — | 2026-11-14 | ✓ |
 | G002 | Jeddah test block (roads, kerbs, buildings, villas, mosque, palms, lights, signal props) | Procedural meshes | Self-made: `TestBlockBuilder.cs`, `CityKit.cs` | Project-owned | — | 2026-11-14 | ✓ |
 
+### Selectable cars (third-party, local only, private testing)
+
+Added on 2026-11-20 at the owner's request: the owner downloaded these from Sketchfab, and the license file inside each download was read. **None of these files is in git.** `game/Assets/Masar/Art/Vehicles/` is gitignored, because the Sketchfab Standard license forbids redistributing the files and the repository is public. They reach the iPad only inside the compiled app, through the encrypted Xcode export. `ImportedCarBuilder.cs` converts them into prefabs (gitignored, under `Generated/` and `Prefabs/`).
+
+**These cars break policy rule 3 (real brands). They are allowed in private TestFlight builds only.** Before any public release, each one must be replaced or licensed (KNOWN_ISSUES G1).
+
+| ID | Car | Source | License | Attribution (shown in the selector) | Status |
+|---|---|---|---|---|---|
+| V001 | Volkswagen Jetta GLI (2025): 385k tris, full interior | https://sketchfab.com/3d-models/volkswagen-jetta-gli-2025-4adbe6ffcf5246ddac95921cb39bd2bf by geyges | Sketchfab Standard: may be used in a game; may not be redistributed | "Volkswagen Jetta GLI (2025)" by geyges | ⚠ Private only. Real brand. Material names (`Display_VW_..._AR_OK`) suggest a manufacturer AR asset, so the origin is unverified |
+| V002 | Hyundai Elantra N (2024): 258k tris, interior with a fixed steering wheel | https://sketchfab.com/3d-models/2024-hyundai-elantra-n-4ba1b1b0eb844e318cc708ada1f2f51f by Ddiaz Design | CC BY-NC-SA 4.0 | This work is based on "2024 Hyundai Elantra N" by Ddiaz Design, licensed under CC-BY-NC-SA-4.0 | ⚠ Private only. **Non-commercial.** Real brand. Naming (`..._lodA`, `RewardRecycled`, `(Clone)`) suggests it was extracted from a game, so the origin is unverified |
+| V003 | Lamborghini Aventador SVJ (LP 770-4): 32k tris, no interior | https://sketchfab.com/3d-models/lamborghini-aventador-lp-770-4-svj-71460dcc354045ddb1e7a8670678ffca by amogusstrikesback2 | CC BY 4.0 | This work is based on "lamborghini aventador lp 770-4 svj" by amogusstrikesback2, licensed under CC-BY-4.0 | ⚠ Private only. Real brand (the license itself allows commercial use) |
+| V004 | Aventador SVJ Mansory twin-turbo: 975k tris, 85 textures | https://sketchfab.com/3d-models/7fc25aa2e7a24e28be35829d635e93fa by VTX | CC BY-NC-SA 4.0 | "Lamborghini Aventador SVJ Mansory Twin Turbo PBR" by VTX, CC BY-NC-SA 4.0 | ⚠ Private only. **Non-commercial.** Real brands. A kitbash: it contains parts named after other vehicles (`G800BRABUS4X4`) |
+| — | 2011 Lamborghini Aventador LP700-4 (ActsOfDoge) | https://sketchfab.com/3d-models/2011-lamborghini-aventador-lp700-4-9d6ab953e2064bceb9cf8772bfef79bb | Sketchfab Standard | — | ❌ **Not used.** The author's own description calls it an "NFS port", meaning it was ripped from a Need for Speed game. Policy rule 2 |
+
 ## Textures & materials
 
 T001–T005 were downloaded on 2026-11-14 from ambientCG as 1K-JPG sets; T006–T008 and H001 on 2026-11-19 from Poly Haven as 2K sets. Only Color, NormalGL, Roughness and AmbientOcclusion maps are kept; Displacement and NormalDX are dropped. `*_MetallicSmoothness.png` files are derived by `MaterialLibrary.PackSmoothness` (smoothness = 1 − roughness).
@@ -63,3 +77,4 @@ T001–T005 were downloaded on 2026-11-14 from ambientCG as 1K-JPG sets; T006–
 | Unity 6.3 LTS engine + URP + Input System + uGUI | 6000.3.28f1 / bundled | Unity Technologies | Unity Personal (free under US$200k revenue/funding) | Engine runtime. The Xcode export is encrypted before upload because the repo is public |
 | XcodeGen (CI only) | latest via Homebrew | https://github.com/yonaskolb/XcodeGen | MIT | Generates the probe's Xcode project on the macOS runner. Not shipped |
 | Unity built-in font (LegacyRuntime) | bundled | Unity | Unity EULA | Phase 0 UI font (Latin only) |
+| glTFast (`com.unity.cloud.gltfast`) | 6.20.0 | Unity Technologies | Apache 2.0 | Editor import of the glTF car models. The game ships the converted meshes, not the importer's output |

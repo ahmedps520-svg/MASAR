@@ -52,6 +52,25 @@ Command-line equivalents (used by Claude Code):
 
 The generators output about 132 MB of meshes, plus the scenes, the test-car prefab and the materials. All of it is **gitignored**, because the builders in `Assets/Masar/Code/Editor` are the source of truth. After a fresh clone, or after changing a generator, run `ConfigureAndBuildScenes` (above) before playing or building.
 
+### Selectable cars (local files, not in git)
+
+The car selector lists the procedural test sedan plus every imported car whose source files are present:
+
+| Car id | Put the Sketchfab glTF download here (unzipped) |
+|---|---|
+| `jetta_gli` | `game/Assets/Masar/Art/Vehicles/Imported/jetta_gli/scene.gltf` (+ `scene.bin`, `textures/`) |
+| `elantra_n` | `game/Assets/Masar/Art/Vehicles/Imported/elantra_n/scene.gltf` |
+| `aventador_svj` | `game/Assets/Masar/Art/Vehicles/Imported/aventador_svj/scene.gltf` |
+| `aventador_mansory` | `game/Assets/Masar/Art/Vehicles/Imported/aventador_mansory/aventador_mansory.glb` |
+
+The whole `Art/Vehicles/` folder is gitignored, because some of these licenses forbid redistribution and the repository is public (ASSET_INVENTORY V001–V004). `ConfigureAndBuildScenes` runs `ImportedCarBuilder.BuildAll`, which converts the models into prefabs and writes the catalog. To rebuild only the cars:
+
+```bash
+"E:/Unity/Editors/6000.3.28f1/Editor/Unity.exe" -batchmode -quit -projectPath E:/MASAR/game -executeMethod Masar.EditorTools.ImportedCarBuilder.BuildAll [-masarCars jetta_gli,elantra_n] -logFile E:/MASAR/build/cars_import.log
+```
+
+Adding another car means adding one `Spec` entry in `ImportedCarBuilder.cs`: name patterns for the tires, calipers, steering wheel, lamps, paint and glass, plus the class of engine and chassis. Review a car with `MasarScreenshots.CaptureAll -masarCar <id> -masarViews 01,02,10`, or measure it with the player smoke test plus `-masarCar <id>`.
+
 ### Automated checks on Windows
 
 | Check | Command |

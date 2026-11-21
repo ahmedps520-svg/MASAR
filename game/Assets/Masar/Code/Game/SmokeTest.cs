@@ -115,6 +115,9 @@ namespace Masar.Game
                 foreach (var f in off.Split(',')) SwitchOff(f.Trim().ToLowerInvariant());
                 tag += "_no-" + off.Replace(',', '-');
             }
+            // "-masarCar id" is applied by DriveSession; it only changes the report name here
+            string carArg = Arg("-masarCar");
+            if (!string.IsNullOrEmpty(carArg)) tag += "_car-" + carArg;
             var car = FindFirstObjectByType<VehicleController>();
             if (car == null) { Debug.LogError("[MASAR smoke] no vehicle found"); Application.Quit(2); yield break; }
             var driver = new ScriptedDriver();

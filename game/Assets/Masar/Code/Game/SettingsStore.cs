@@ -18,6 +18,7 @@ namespace Masar.Game
         public bool showTouchControls = true;
         public TransmissionKind transmission = TransmissionKind.Automatic;
         public CameraMode cameraMode = CameraMode.Chase;
+        public string selectedCar = "";               // CarCatalog entry id; empty = first car
         public CameraModeSettings[] cameras;
         public InputCalibration keyboard = new InputCalibration();
         public InputCalibration gamepad = new InputCalibration { steerDeadzone = 0.08f, steerExponent = 1.4f };

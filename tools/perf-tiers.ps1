@@ -16,7 +16,8 @@ param(
   [string]$Exe = "E:\MASAR\build\windows\MASAR.exe",
   [int]$Seconds = 12,
   [string[]]$Tiers = @("Low", "Medium", "High", "Ultra"),
-  [string]$Off = ""
+  [string]$Off = "",
+  [string]$Car = ""
 )
 $ErrorActionPreference = "Stop"
 # "-File script -Tiers High,Ultra" passes one string; split it here so both call styles work
@@ -26,6 +27,7 @@ $outDir = Join-Path $repo "build\perf"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $data = Join-Path $env:USERPROFILE "AppData\LocalLow\MASAR Project\MASAR"
 $suffix = if ($Off) { "_no-" + ($Off -replace ",", "-") } else { "" }
+if ($Car) { $suffix += "_car-$Car" }
 
 $rows = @()
 foreach ($t in $Tiers) {
@@ -35,6 +37,7 @@ foreach ($t in $Tiers) {
   $argList = @("-masarSmokeTest", "-masarQuality", $t, "-masarUncapped", "-masarSmokeSeconds", "$Seconds",
     "-screen-width", "2420", "-screen-height", "1668", "-screen-fullscreen", "0", "-logFile", $log)
   if ($Off) { $argList += @("-masarOff", $Off) }
+  if ($Car) { $argList += @("-masarCar", $Car) }
   $p = Start-Process -FilePath $Exe -PassThru -ArgumentList $argList
   if (-not $p.WaitForExit(180000)) { $p.Kill(); Write-Warning "$t timed out"; continue }
   $rep = Join-Path $data "$name.txt"

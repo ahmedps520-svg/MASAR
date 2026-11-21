@@ -1,6 +1,6 @@
 # MASAR: Project Status
 
-**Phase:** 0, technical foundation · **Last updated:** 2026-11-14 · **Gate 0:** not yet passed (needs the iPad run)
+**Phase:** 0, technical foundation · **Last updated:** 2026-11-20 · **Gate 0:** not yet passed (needs the iPad run)
 
 ## Summary
 
@@ -25,6 +25,8 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **iOS Xcode export** (iPad only, iPadOS 17+, all four tiers available) | 1,071 MB, 0 errors |
 | **UI layout verified at iPad aspect** (menu, settings, devices, touch HUD, pause) | `-masarUiCapture`, six layout bugs fixed |
 | Phase 0 report page | https://claude.ai/artifact/HqkUAUW13RHuMrH6qP5ycx (private to the owner) |
+| Realism pass (2026-11-19/20): scanned roads, HDRI lighting, geometric date palms, facade weathering, MSAA/STP fix | Review screenshots, PERFORMANCE_REPORT.md |
+| **Car selector (2026-11-20):** 5 cars (test sedan + 4 imported Sketchfab models: Jetta GLI, Elantra N, Aventador SVJ, Aventador Mansory). Main-menu and pause-menu selector with rendered thumbnails and license credits. A generic importer finds wheels, steering, lamps and colliders, and measures wheelbase, track and tire radius | `ImportedCarBuilder.cs`. Imported cars are for **private testing only** (ASSET_INVENTORY V001–V004, KNOWN_ISSUES G1) |
 
 ## In progress
 
@@ -32,7 +34,7 @@ Nothing. Phase 0 work that doesn't need the iPad is complete.
 
 ## Blockers (owner action needed)
 
-1. **Apple and GitHub secrets for TestFlight:** bundle IDs, app records, App Store Connect API key, five repository secrets (BUILD_INSTRUCTIONS §4).
+1. ~~Apple and GitHub secrets for TestFlight~~: done 2026-11-20 (`tools/setup.ps1`).
 2. **Hardware tests:** G923 on the PC (desktop axis mapping) and on the iPad (probe app via TestFlight).
 
 ## Next tasks

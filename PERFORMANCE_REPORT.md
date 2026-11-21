@@ -47,6 +47,18 @@ Scene: scanned Poly Haven asphalt with detail maps, tire-wear overlays, worn pai
 | Detail maps | 4.74 ms | within noise | Keep |
 | HDRI sky | 4.81 ms | within noise | Keep |
 
+**Per car at High** (2026-11-21, `perf-tiers.ps1 -Tiers High -Car <id>`, same session, same scripted drive):
+
+| Car | Model triangles | Car draw calls | GPU | CPU main | Scene draws | Scene triangles | Unity alloc |
+|---|---|---|---|---|---|---|---|
+| Test sedan (procedural) | ≈60 k | ≈20 | 3.33 ms | 1.34 ms | 904 | 1.58 M | 302 MB |
+| Jetta GLI (full interior) | 385 k | 65 | 3.68 ms | 1.40 ms | 1,002 | 2.79 M | 337 MB |
+| Elantra N | 258 k | 40 | 3.45 ms | 1.41 ms | 888 | 2.11 M | 313 MB |
+| Aventador SVJ | 32 k | 21 | 3.44 ms | 1.32 ms | 616 | 1.12 M | 302 MB |
+| Aventador Mansory | 975 k | 141 | **4.02 ms** | 1.22 ms | 848 | 4.62 M | 352 MB |
+
+On the PC every car costs at most about 0.7 ms of GPU time. Scene triangles count the car about three times: the camera, the shadow cascades and the depth prepass. The Mansory is the one to watch on the iPad: about 1 M triangles drawn several times per frame. Only the chosen car is loaded (catalog entries are Resources paths), so memory grows with the chosen car, not with the catalog. Draw-call differences between runs also reflect where the car ends up after 12 s (LOD and occlusion of the city).
+
 #### Before the realism pass (2026-11-15, 2420×1440, MSAA 2x on every tier by mistake, so STP never ran)
 
 | Tier | Render scale | Avg FPS (uncapped) | CPU main | GPU | Draw calls | Triangles | Unity alloc |

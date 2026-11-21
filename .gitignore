@@ -46,6 +46,13 @@ game/Assets/Masar/Art/Textures/**/*_MetallicSmoothness.png
 game/Assets/Masar/Art/Textures/**/*_MetallicSmoothness.png.meta
 game/Assets/Masar/Data/TestSedan.asset
 game/Assets/Masar/Data/TestSedan.asset.meta
+game/Assets/Masar/Resources/
+game/Assets/Masar/Resources.meta
+
+# ---- Third-party car models: local only. Several licenses forbid redistribution
+#      (Sketchfab Standard) and the repository is public. See ASSET_INVENTORY.md.
+game/Assets/Masar/Art/Vehicles/
+game/Assets/Masar/Art/Vehicles.meta
 
 # ---- Build outputs ----
 build/

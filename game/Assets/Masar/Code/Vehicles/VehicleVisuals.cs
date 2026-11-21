@@ -12,6 +12,8 @@ namespace Masar.Vehicles
     {
         [Tooltip("Wheel visual pivots in order FL, FR, RL, RR. Each pivot must be at the wheel center, rolling about local X.")]
         public Transform[] wheels = new Transform[4];
+        [Tooltip("Optional parts that follow the wheel and steer with it but don't spin (brake calipers), FL, FR, RL, RR.")]
+        public Transform[] wheelCarriers = new Transform[0];
         [Tooltip("Steering wheel pivot, rotating about its local Z (column axis).")]
         public Transform steeringWheel;
         public Renderer[] brakeLightRenderers;
@@ -63,6 +65,11 @@ namespace Masar.Vehicles
                 float ext = susp.restLength - Mathf.Clamp(state.Compression, 0f, susp.travel + 0.05f);
                 w.localPosition = mount - Vector3.up * ext;
                 w.localRotation = Quaternion.Euler(0f, state.SteerAngle, 0f) * Quaternion.Euler(state.SpinAngle, 0f, 0f);
+                if (wheelCarriers != null && i < wheelCarriers.Length && wheelCarriers[i] != null)
+                {
+                    wheelCarriers[i].localPosition = w.localPosition;
+                    wheelCarriers[i].localRotation = Quaternion.Euler(0f, state.SteerAngle, 0f);
+                }
             }
 
             if (steeringWheel != null)

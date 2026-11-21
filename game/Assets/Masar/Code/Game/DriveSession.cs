@@ -28,6 +28,61 @@ namespace Masar.Game
         private bool _paused;
         private readonly List<Renderer> _renderers = new List<Renderer>();
 
+        /// <summary>
+        /// Swaps the scene's placeholder car for the selected one before anything else starts.
+        /// The command line (-masarCar id) overrides the saved choice, for perf runs.
+        /// </summary>
+        private void Awake()
+        {
+            if (vehicle == null) vehicle = FindFirstObjectByType<VehicleController>();
+            var catalog = CarCatalog.Instance;
+            if (catalog == null || vehicle == null) return;
+            string id = SettingsStore.Current.selectedCar;
+            var args = System.Environment.GetCommandLineArgs();
+            int ai = System.Array.IndexOf(args, "-masarCar");
+            if (ai >= 0 && ai + 1 < args.Length) id = args[ai + 1];
+            else if (System.Array.IndexOf(args, "-masarSmokeTest") >= 0) id = "test_sedan";   // deterministic perf baselines
+            var entry = catalog.FindOrDefault(id);
+            if (entry == null || (entry.prefab != null && entry.prefab.name == vehicle.gameObject.name)) return;
+            var v = Replace(vehicle, entry, vehicle.transform.position, vehicle.transform.rotation);
+            if (v == null) return;
+            vehicle = v;
+            if (cameraRig != null) cameraRig.target = vehicle;
+            Debug.Log($"[MASAR] Car: {entry.displayName} ({entry.id})");
+        }
+
+        private static VehicleController Replace(VehicleController old, CarCatalog.Entry entry, Vector3 pos, Quaternion rot)
+        {
+            var prefab = entry.LoadPrefab();
+            if (prefab == null) { Debug.LogError($"[MASAR] Car {entry.id} could not be loaded"); return null; }
+            var go = Instantiate(prefab, pos, rot);
+            go.name = prefab.name;
+            old.gameObject.SetActive(false);
+            Destroy(old.gameObject);
+            // Free the previous car's meshes and textures (only the chosen car stays in memory)
+            Resources.UnloadUnusedAssets();
+            return go.GetComponent<VehicleController>();
+        }
+
+        /// <summary>Pause-menu car change: the new car appears where the old one is, at rest.</summary>
+        public void SwitchCar(CarCatalog.Entry entry)
+        {
+            if (entry == null || !entry.IsAvailable) return;
+            var t = vehicle.transform;
+            var fwd = Vector3.ProjectOnPlane(t.forward, Vector3.up);
+            var rot = Quaternion.LookRotation(fwd.sqrMagnitude > 1e-4f ? fwd : Vector3.forward, Vector3.up);
+            var v = Replace(vehicle, entry, t.position + Vector3.up * 0.15f, rot);
+            if (v == null) return;
+            vehicle = v;
+            var router = GameServices.Instance.Input;
+            v.Input = router;
+            if (v.Simulation != null) v.Simulation.Drivetrain.Mode = SettingsStore.Current.transmission;
+            cameraRig.SetTarget(v);
+            if (_hud) _hud.vehicle = v;
+            GetComponentsInScene(_renderers);
+            Debug.Log($"[MASAR] Switched car: {entry.displayName} ({entry.id})");
+        }
+
         private void Start()
         {
             var services = GameServices.Instance;
@@ -130,6 +185,8 @@ namespace Masar.Game
             var title = UIKit.Label(col, "Paused", 54, UIKit.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Size(title, 90);
             UIKit.Size(UIKit.Button(col, "Resume", () => SetPaused(false), 30, UIKit.Accent), 84);
+            var current = CarCatalog.Instance != null ? CarCatalog.Instance.FindOrDefault(SettingsStore.Current.selectedCar) : null;
+            UIKit.Size(UIKit.Button(col, "Change car" + (current != null ? $" ({current.displayName})" : ""), OpenCars, 28), 76);
             UIKit.Size(UIKit.Button(col, $"Settings (camera: {CameraName(cameraRig.mode)})", OpenSettings, 28), 76);
             UIKit.Size(UIKit.Button(col, "Input devices & wheel test", OpenDevices, 28), 76);
             DiagnosticsButton.Create(col, "pause-menu", 76f);
@@ -154,6 +211,17 @@ namespace Masar.Game
             if (_pause) _pause.SetActive(false);   // one menu on screen at a time
             _subPanel = SettingsPanel.Create(_canvas.transform, cameraRig, CloseSubPanel,
                 t => vehicle.Simulation.Drivetrain.Mode = t).gameObject;
+        }
+
+        private void OpenCars()
+        {
+            if (_subPanel) Destroy(_subPanel);
+            if (_pause) _pause.SetActive(false);
+            _subPanel = CarSelectPanel.Create(_canvas.transform, e =>
+            {
+                SwitchCar(e);
+                SetPaused(false);
+            }, CloseSubPanel).gameObject;
         }
 
         private void OpenDevices()

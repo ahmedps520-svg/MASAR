@@ -59,6 +59,7 @@ namespace Masar.EditorTools
         {
             Configure();
             TestBlockBuilder.BuildAll();
+            ImportedCarBuilder.BuildAll();   // selectable cars + catalog (imported models are local only)
             AssetDatabase.SaveAssets();
         }
 

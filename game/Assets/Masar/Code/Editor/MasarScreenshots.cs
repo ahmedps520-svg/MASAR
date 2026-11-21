@@ -35,8 +35,23 @@ namespace Masar.EditorTools
             int level = System.Array.IndexOf(QualitySettings.names, quality);
             if (level >= 0) QualitySettings.SetQualityLevel(level, true);
 
-            EditorSceneManager.OpenScene(TestBlockBuilder.ScenePath, OpenSceneMode.Single);
+            var scene = EditorSceneManager.OpenScene(TestBlockBuilder.ScenePath, OpenSceneMode.Single);
             var car = Object.FindFirstObjectByType<Masar.Vehicles.VehicleController>();
+
+            // -masarCar <id>: review a catalog car in place of the scene's test sedan
+            string carId = null;
+            int ci = System.Array.IndexOf(args, "-masarCar");
+            if (ci >= 0 && ci + 1 < args.Length) carId = args[ci + 1];
+            var catalog = AssetDatabase.LoadAssetAtPath<Masar.Vehicles.CarCatalog>(ImportedCarBuilder.CatalogPath);
+            var entry = carId != null && catalog != null ? catalog.Find(carId) : null;
+            if (entry != null && car != null)
+            {
+                var swap = (GameObject)PrefabUtility.InstantiatePrefab(entry.LoadPrefab(), scene);
+                swap.transform.SetPositionAndRotation(car.transform.position, car.transform.rotation);
+                car.gameObject.SetActive(false);
+                car = swap.GetComponent<Masar.Vehicles.VehicleController>();
+                quality += "_" + carId;
+            }
             Vector3 c = car != null ? car.transform.position : Vector3.zero;
             Vector3 fwd = car != null ? car.transform.forward : Vector3.right;
 
@@ -70,8 +85,12 @@ namespace Masar.EditorTools
             var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32) { antiAliasing = 1 };
             cam.targetTexture = rt;
 
+            // -masarViews 01,02,10 renders only those views
+            int vi = System.Array.IndexOf(args, "-masarViews");
+            var only = vi >= 0 && vi + 1 < args.Length ? args[vi + 1].Split(',') : null;
             foreach (var v in views)
             {
+                if (only != null && System.Array.IndexOf(only, v.Name.Substring(0, 2)) < 0) continue;
                 if (v.FromCarInterior && car != null)
                 {
                     var anchors = car.GetComponentInChildren<VehicleCameraAnchors>();

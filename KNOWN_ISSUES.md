@@ -10,14 +10,14 @@ Status labels: **Working**: implemented and tested. **Prototype**: implemented, 
 | L2 | **No genuine force feedback on iPad** | Blocked (platform) | iPadOS has no public FFB API. The game shows **no** FFB settings anywhere. A DriverKit (USBDriverKit) research spike needs the paid account and is unproven: Apple's HID driver may claim the wheel first |
 | L3 | No Mac | Limitation | No Xcode debugger or Instruments. Diagnostics come from the in-game overlay, CSV logs, the Unity Profiler over Wi-Fi (development builds) and TestFlight crash reports |
 | L4 | The engine must be installed by the user | Resolved when done | Installing the Unity editor needs a Windows admin prompt and a Unity account sign-in (BUILD_INSTRUCTIONS §1) |
-| L5 | Apple secrets not yet configured | Blocked on user | Run `tools/setup.ps1` once. TestFlight workflows fail fast with a clear message until the secrets exist |
+| L5 | **Resolved 2026-11-20:** Apple secrets configured | Done | The owner ran `tools/setup.ps1`: API key, issuer, team, P8 and passphrase secrets are stored, the bundle ID and app record exist, and the preflight passes |
 | L6 | Diagnostics upload not configured yet | Blocked on user | The **Send diagnostics** button works and saves locally (Files app > MASAR > diagnostics), and it says "Upload isn't configured yet" until the ForgeBase project exists (setup step 4) |
 
 ## Phase 0 placeholders (not final quality)
 
 | # | Item | Status | Plan |
 |---|---|---|---|
-| P1 | Test car is a procedural loft: generic, unbranded, simplified interior | Placeholder | Month 2: Blender-modelled hero vehicle with a cockpit-grade interior |
+| P1 | **Improved 2026-11-20:** a car selector (main menu and pause menu) offers imported third-party models next to the procedural test sedan. Wheels, steering, lamps, colliders and wheelbase/track/tire radius come from each model. Engine, gearing and mass are class estimates, not manufacturer data. Gaps: the Aventador SVJ has no interior at all; the Elantra's steering wheel is part of its interior mesh, so it doesn't turn; there's no paint-color choice and no per-car sound | Prototype (private testing only, see G1) | Month 2: a licensed or self-modelled hero vehicle with a cockpit-grade interior |
 | P2 | Buildings are procedurally generated from a modular facade kit | Prototype | Month 3: Blender-authored modular kits + landmarks. The procedural kit stays for background fill |
 | P3 | The test block is a hand-designed layout, not a real Jeddah location | Placeholder | Month 3: OSM-derived road network for the chosen neighborhood |
 | P4 | Traffic-signal heads cycle on a timer | Placeholder (visual prop) | Month 3/4: real signal controllers bound to the road graph. Nothing reads these props |
@@ -28,7 +28,7 @@ Status labels: **Working**: implemented and tested. **Prototype**: implemented, 
 
 ## Not implemented (planned)
 
-Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school, theory test, practical exam, traffic rules and enforcement, vehicle selection, OSM import, city streaming (cells), LOD/HLOD for the city, occlusion-culling bake, Arabic localization and RTL UI, wheel-bridge app, wheel calibration UI (the data model exists in `InputCalibration`).
+Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school, theory test, practical exam, traffic rules and enforcement, OSM import, city streaming (cells), LOD/HLOD for the city, occlusion-culling bake, Arabic localization and RTL UI, wheel-bridge app, wheel calibration UI (the data model exists in `InputCalibration`).
 
 ## Known technical issues
 
@@ -56,6 +56,6 @@ Traffic AI, pedestrians, audio, damage, weather, day/night cycle, driving school
 
 | # | Item | Status |
 |---|---|---|
-| G1 | Real vehicle brands, models and logos | Not used. Apple guideline 5.2.1 and trademark law require licenses. Generic designs only |
+| G1 | Real vehicle brands, models and logos | **Used in private TestFlight builds only (since 2026-11-20, owner's decision).** The selectable cars V001–V004 are real brands (Volkswagen, Hyundai, Lamborghini, Mansory), shown with their names and badges. Apple guideline 5.2.1 and trademark law require licenses for any public release, so each car must be licensed or replaced by a generic design first. Two of them are also CC BY-NC-SA (non-commercial) and one has an unverified origin (ASSET_INVENTORY) |
 | G2 | OpenStreetMap data | Not yet used. When used: on-screen and credits attribution "© OpenStreetMap contributors", plus ODbL share-alike for any distributed derivative database |
 | G3 | Saudi traffic rules, fines and exam procedures | Not yet modelled. Must come from official sources (Ministry of Interior / Moroor, Absher, official driving-school material), with every figure cited |
