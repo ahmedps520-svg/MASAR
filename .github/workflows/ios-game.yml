@@ -61,8 +61,11 @@ jobs:
             -in "$RUNNER_TEMP/masar-ios-xcode.zip.enc" -out "$RUNNER_TEMP/xcode.zip"
           rm "$RUNNER_TEMP/masar-ios-xcode.zip.enc"
           mkdir -p "$RUNNER_TEMP/xcode"
-          unzip -q "$RUNNER_TEMP/xcode.zip" -d "$RUNNER_TEMP/xcode"
+          # unzip exits 1 for warnings only (e.g. an old archive with backslash paths)
+          unzip -q "$RUNNER_TEMP/xcode.zip" -d "$RUNNER_TEMP/xcode" || [ $? -eq 1 ]
           rm "$RUNNER_TEMP/xcode.zip"
+          # Zips made on Windows carry no Unix permissions: make every directory traversable
+          chmod -R u+rwX "$RUNNER_TEMP/xcode"
           ls "$RUNNER_TEMP/xcode"
           cat "$RUNNER_TEMP/xcode/MASAR_BUILD_INFO.txt" || true
           BN=$(grep '^build=' "$RUNNER_TEMP/xcode/MASAR_BUILD_INFO.txt" | cut -d= -f2 | tr -d '\r')
@@ -136,7 +139,9 @@ jobs:
 
       - name: Remove API key and decrypted project
         if: always()
-        run: rm -rf "$RUNNER_TEMP/keys" "$RUNNER_TEMP/xcode"
+        run: |
+          chmod -R u+rwX "$RUNNER_TEMP/xcode" 2>/dev/null || true
+          rm -rf "$RUNNER_TEMP/keys" "$RUNNER_TEMP/xcode"
 
       - uses: actions/upload-artifact@v4
         if: always()

@@ -16,6 +16,7 @@
 param(
   [switch]$Development,
   [switch]$NoUpload,
+  [switch]$SkipExport,
   [string]$UnityExe = "E:\Unity\Editors\6000.3.28f1\Editor\Unity.exe"
 )
 $ErrorActionPreference = "Stop"
@@ -34,13 +35,22 @@ New-Item -ItemType Directory -Force -Path (Join-Path $repo "build") | Out-Null
 $buildNumber = (git -C $repo rev-list --count HEAD).Trim()
 $commit = (git -C $repo rev-parse --short HEAD).Trim()
 
-$unityArgs = @("-batchmode", "-quit", "-buildTarget", "iOS", "-projectPath", $project, "-logFile", $log,
-          "-executeMethod", "Masar.EditorTools.MasarBuild.BuildIOSXcode", "-buildNumber", $buildNumber)
-if ($Development) { $unityArgs += "-development" }
-Write-Host "Exporting Xcode project (build $buildNumber, commit $commit)..."
-$p = Start-Process -FilePath $UnityExe -ArgumentList $unityArgs -Wait -PassThru -NoNewWindow
-if ($p.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "Unity export failed (exit $($p.ExitCode)). Log: $log" }
-Select-String -Path $log -Pattern "\[MASAR\] Build" | ForEach-Object { $_.Line }
+if ($SkipExport) {
+  # Re-package and re-upload the existing export (e.g. after a CI-side failure)
+  if (-not (Test-Path (Join-Path $out "Unity-iPhone.xcodeproj"))) { throw "No existing export in $out" }
+  $info = Get-Content (Join-Path $out "MASAR_BUILD_INFO.txt") -ErrorAction SilentlyContinue
+  $prev = ($info | Where-Object { $_ -like "build=*" }) -replace "build=", ""
+  if ($prev) { $buildNumber = $prev }
+  Write-Host "Reusing the existing Xcode export (build $buildNumber)"
+} else {
+  $unityArgs = @("-batchmode", "-quit", "-buildTarget", "iOS", "-projectPath", $project, "-logFile", $log,
+            "-executeMethod", "Masar.EditorTools.MasarBuild.BuildIOSXcode", "-buildNumber", $buildNumber)
+  if ($Development) { $unityArgs += "-development" }
+  Write-Host "Exporting Xcode project (build $buildNumber, commit $commit)..."
+  $p = Start-Process -FilePath $UnityExe -ArgumentList $unityArgs -Wait -PassThru -NoNewWindow
+  if ($p.ExitCode -ne 0) { Get-Content $log -Tail 40; throw "Unity export failed (exit $($p.ExitCode)). Log: $log" }
+  Select-String -Path $log -Pattern "\[MASAR\] Build" | ForEach-Object { $_.Line }
+}
 
 "commit=$commit`nbuild=$buildNumber`ndevelopment=$Development`ndate=$(Get-Date -Format s)" | Set-Content -Encoding ascii (Join-Path $out "MASAR_BUILD_INFO.txt")
 
@@ -48,7 +58,10 @@ $zip = Join-Path $repo "build\masar-ios-xcode.zip"
 $enc = "$zip.enc"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Write-Host "Zipping..."
-Compress-Archive -Path (Join-Path $out "*") -DestinationPath $zip -CompressionLevel Optimal
+# Windows tar (bsdtar) writes forward-slash paths. Compress-Archive in Windows PowerShell 5.1
+# writes backslashes, which macOS unzip turns into unreadable directories.
+& "$env:SystemRoot\System32\tar.exe" -a -c -f $zip -C $out .
+if ($LASTEXITCODE -ne 0) { throw "tar failed (exit $LASTEXITCODE)" }
 Write-Host ("Zip: {0:N0} MB" -f ((Get-Item $zip).Length / 1MB))
 
 $env:MASAR_XCODE_PASS = (Get-Content -Raw $passFile).Trim()
