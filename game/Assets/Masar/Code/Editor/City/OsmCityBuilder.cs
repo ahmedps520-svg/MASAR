@@ -58,7 +58,12 @@ namespace Masar.EditorTools.City
             }
             surf.Region(k => surf.R[k], 0f, 7f, p => Chunk(p)[m.Asphalt]);
             surf.Region(k => Mathf.Max(-surf.R[k], surf.S[k]), RoadSurface.KerbHeight, 1.5f, p => Chunk(p)[m.Pavers]);
-            surf.Region(k => Mathf.Max(-surf.R[k], -surf.S[k]), RoadSurface.KerbHeight, 6f, p => Chunk(p)[m.Ground]);
+            // Plots: paved forecourts in the first 6 m behind the sidewalk of tertiary and bigger roads
+            // (shop fronts and parking aprons, as on Tahlia), sand-coloured ground elsewhere
+            const float Forecourt = 6f;
+            bool Major(int k) => surf.Cls[k] >= (byte)RoadClass.Tertiary;
+            surf.Region(k => Mathf.Max(Mathf.Max(-surf.R[k], -surf.S[k]), Mathf.Max(surf.S[k] - Forecourt, Major(k) ? -1f : 1f)), RoadSurface.KerbHeight, 1.5f, p => Chunk(p)[m.Pavers]);
+            surf.Region(k => Mathf.Max(Mathf.Max(-surf.R[k], -surf.S[k]), Major(k) ? Forecourt - surf.S[k] : -1f), RoadSurface.KerbHeight, 6f, p => Chunk(p)[m.Ground]);
             int kerbSegs = BuildKerbs(surf, m, Chunk);
             int marks = BuildMarkings(net, surf, m, p => area.Contains(p) ? Chunk(p) : null);
             var groundRoot = new GameObject("Ground").transform; groundRoot.SetParent(world, false);
@@ -85,6 +90,22 @@ namespace Masar.EditorTools.City
             // ---------------- buildings and street furniture
             var dress = new CityDressing(map, net, surf, m, area);
             dress.Build();
+            // Landscape ground (lawns, turf, parking asphalt, paths, gravel, pools) and painted lines
+            var landChunks = new Dictionary<Vector2Int, MeshBatch>();
+            dress.EmitGround(p =>
+            {
+                var k = RoadSurface.ChunkOf(p);
+                if (!landChunks.TryGetValue(k, out var b)) { b = new MeshBatch(); landChunks[k] = b; }
+                return b;
+            });
+            var landRoot = new GameObject("Landscape").transform; landRoot.SetParent(world, false);
+            foreach (var kv in landChunks)
+                foreach (var g in kv.Value.Flush(landRoot, $"Land_{kv.Key.x}_{kv.Key.y}", GenDir, collider: false))
+                {
+                    g.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    TestBlockBuilder.MarkStatic(g, occluder: false);
+                }
+            Debug.Log($"[MASAR] Landscape: {dress.Parks} parks, {dress.PocketParks} pocket gardens, {dress.Pitches} pitches, {dress.ParkingLots} car parks ({dress.ParkedCars.Count} parked cars), {dress.Sites} construction sites, {dress.Trees} trees");
             var cityRoot = new GameObject("Buildings").transform; cityRoot.SetParent(world, false);
             cityRoot.gameObject.AddComponent<CityLodManager>();
             int nearTris = 0, midTris = 0, farTris = 0;
@@ -181,6 +202,24 @@ namespace Masar.EditorTools.City
 
             // ---------------- traffic + pedestrians
             var trafficPrefabs = TrafficKit.BuildTrafficCars();
+            // Parked cars: static copies of the traffic car bodies, hidden when small on screen
+            var parkedRoot = new GameObject("ParkedCars").transform; parkedRoot.SetParent(world, false);
+            var prnd = new System.Random(41);
+            foreach (var (pos, yaw) in dress.ParkedCars)
+            {
+                var pf = trafficPrefabs[prnd.Next(trafficPrefabs.Length)];
+                var parked = (GameObject)PrefabUtility.InstantiatePrefab(pf.gameObject);
+                PrefabUtility.UnpackPrefabInstance(parked, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                parked.transform.SetParent(parkedRoot, false);
+                parked.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
+                Object.DestroyImmediate(parked.GetComponent<TrafficCar>());
+                Object.DestroyImmediate(parked.GetComponent<Rigidbody>());
+                var lodg = parked.AddComponent<LODGroup>();
+                lodg.fadeMode = LODFadeMode.None;
+                lodg.SetLODs(new[] { new LOD(0.035f, parked.GetComponentsInChildren<Renderer>()) });
+                lodg.RecalculateBounds();
+                GameObjectUtility.SetStaticEditorFlags(parked, StaticEditorFlags.OccludeeStatic);
+            }
             var pedPrefabs = MixamoPedestrians.Build() ?? TrafficKit.BuildPedestrians();   // owner-provided characters first
             var tgo = new GameObject("Traffic");
             var ts = tgo.AddComponent<TrafficSystem>();
@@ -226,15 +265,16 @@ namespace Masar.EditorTools.City
             Lightmapping.lightingSettings = ls;
             EditorSceneManager.SaveScene(scene, TahliaScene);
             bool baked = Lightmapping.Bake();
-            StaticOcclusionCulling.smallestOccluder = 6f;
-            StaticOcclusionCulling.smallestHole = 0.5f;
-            StaticOcclusionCulling.backfaceThreshold = 100f;
+            // No Umbra occlusion bake for the city: with whole-cell merged meshes it culled visible buildings,
+            // shopfronts and trees (found 2026-11-22 by comparing renders with and without it). The cell
+            // near/mid/far switching does the distance work instead.
             var to = System.DateTime.Now;
-            bool occ = StaticOcclusionCulling.Compute();
+            StaticOcclusionCulling.Clear();
+            bool occ = true;
             EditorSceneManager.SaveScene(scene, TahliaScene);
             AddToBuildSettings(TahliaScene);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[MASAR] Tahlia scene built in {(System.DateTime.Now - t0).TotalSeconds:F0}s: probes {(baked ? "OK" : "FAILED")}, occlusion {(occ ? "OK" : "FAILED")} ({(System.DateTime.Now - to).TotalSeconds:F0}s)");
+            Debug.Log($"[MASAR] Tahlia scene built in {(System.DateTime.Now - t0).TotalSeconds:F0}s: probes {(baked ? "OK" : "FAILED")}, occlusion off (cleared: {occ})");
         }
 
         static void ResetFolder(string path)

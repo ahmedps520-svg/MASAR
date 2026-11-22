@@ -114,6 +114,7 @@ namespace Masar.EditorTools
             data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
             data.antialiasingQuality = AntialiasingQuality.High;
             cam.farClipPlane = 1800f;
+            if (System.Array.IndexOf(args, "-noOcclusion") >= 0) cam.useOcclusionCulling = false;
             const int W = 2420, H = 1668; // iPad Pro 11" (M5) native resolution
             var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32) { antiAliasing = 1 };
             cam.targetTexture = rt;

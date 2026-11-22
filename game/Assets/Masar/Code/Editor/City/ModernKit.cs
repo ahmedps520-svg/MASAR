@@ -29,10 +29,10 @@ namespace Masar.EditorTools.City
             {
                 Glass = new[]
                 {
-                    MaterialLibrary.Solid("Modern_Glass_BlueGreen", new Color(0.16f, 0.30f, 0.34f), 0.96f, 0.85f),
-                    MaterialLibrary.Solid("Modern_Glass_Silver", new Color(0.42f, 0.46f, 0.50f), 0.97f, 0.9f),
-                    MaterialLibrary.Solid("Modern_Glass_Bronze", new Color(0.30f, 0.24f, 0.18f), 0.96f, 0.85f),
-                    MaterialLibrary.Solid("Modern_Glass_DeepBlue", new Color(0.08f, 0.16f, 0.30f), 0.96f, 0.85f),
+                    MaterialLibrary.Solid("Modern_Glass_BlueGreen", new Color(0.30f, 0.46f, 0.50f), 0.93f, 0.55f),
+                    MaterialLibrary.Solid("Modern_Glass_Silver", new Color(0.55f, 0.60f, 0.64f), 0.94f, 0.6f),
+                    MaterialLibrary.Solid("Modern_Glass_Bronze", new Color(0.44f, 0.36f, 0.27f), 0.93f, 0.55f),
+                    MaterialLibrary.Solid("Modern_Glass_DeepBlue", new Color(0.20f, 0.32f, 0.48f), 0.93f, 0.55f),
                 },
                 Cladding = new[]
                 {

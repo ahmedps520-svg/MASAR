@@ -15,7 +15,7 @@ namespace Masar.EditorTools.City
     /// Geometry is merged per 64 m cell into a near mesh (full detail) and a far mesh (walls, glass and
     /// roofs only), switched by distance at runtime (<see cref="CellLod"/>).
     /// </summary>
-    public sealed class CityDressing
+    public sealed partial class CityDressing
     {
         public const float CellSize = 128f;
 
@@ -62,6 +62,7 @@ namespace Masar.EditorTools.City
             FrontageFill();
             InteriorFill();
             StreetLightsAndPalms();
+            Landscape();   // parks, pitches, parking, sites, empty plots, street trees (CityDressing.Landscape.cs)
         }
 
         // ------------------------------------------------------------------ helpers
@@ -505,6 +506,11 @@ namespace Masar.EditorTools.City
                 return i >= 0 && j >= 0 && i < _nx && j < _nz;
             }
             public bool Get(Vector2 p) => !Idx(p, out int k) || _g[k];
+            public int Nx => _nx; public int Nz => _nz; public float CellSize => _c;
+            public bool GetCell(int i, int j) => i < 0 || j < 0 || i >= _nx || j >= _nz || _g[j * _nx + i];
+            public void SetCell(int i, int j) { if (i >= 0 && j >= 0 && i < _nx && j < _nz) _g[j * _nx + i] = true; }
+            public Vector2 CellCenter(int i, int j) => new Vector2(_r.xMin + (i + 0.5f) * _c, _r.yMin + (j + 0.5f) * _c);
+            public Vector2Int CellOf(Vector2 p) => new Vector2Int(Mathf.FloorToInt((p.x - _r.xMin) / _c), Mathf.FloorToInt((p.y - _r.yMin) / _c));
             public void Set(Vector2 p) { if (Idx(p, out int k)) _g[k] = true; }
             public void FillRect(Vector2 c, Vector2 ax, float w, float d)
             {
