@@ -109,7 +109,8 @@ What this proves and what it doesn't:
 
 | Date | Build | Tier | Scene | FPS avg / 1% | CPU main | GPU | Footprint / available | Thermal after 10 min | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| 2026-11-22 | TestFlight build 16 | Max / High / Medium | **Tahlia / Al Rawdah** with traffic and pedestrians | Max ≈ 60 fps ("smooth"), High ≈ 90 fps, Medium ≈ 70 fps (owner's observation; Medium below High is unexplained, maybe the 60/120 frame cap or the moment it was read) | not captured | not captured | not captured | not captured | First city run on the device. AI turns looked wrong and Mixamo pedestrians were white and wrongly sized (both fixed for build 17) |
+| 2026-11-22 | TestFlight build 19 | — | Tahlia + landscaping, occlusion off | to be measured by the owner | | | | | Uploaded 2026-11-22 (commit 2297ffe) |
+| 2026-11-22 | TestFlight build 16 | Max / High / Medium | **Tahlia / Al Rawdah** with traffic and pedestrians | Max ≈ 60 fps ("smooth"), High ≈ 90 fps, Medium ≈ 70 fps (owner's observation; Medium below High is unexplained, maybe the 60/120 frame cap or the moment it was read) | not captured | not captured | not captured | not captured | First city run on the device. AI turns looked wrong and Mixamo pedestrians were white and wrongly sized (both fixed in build 19) |
 | 2026-11-21 | TestFlight build 11 | Ultra | Test block, free drive | **≈90 fps** (owner's observation: "smooth") | not captured | not captured | not captured | not captured | First run on the device. Frame-cap setting not recorded. Overlay/CSV numbers still needed (diagnostics upload not configured yet) |
 
 ## Physics regression results
