@@ -106,6 +106,7 @@ namespace Masar.EditorTools
                 var go = new GameObject($"{name}_{kv.Key.name}");
                 go.transform.SetParent(parent, false);
                 var mesh = kv.Value.ToMesh($"{name}_{kv.Key.name}");
+                MeshBuilder.Compact(mesh);   // 28 instead of 64 bytes per vertex
                 string path = $"{meshDir}/{mesh.name}.asset";
                 var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
                 if (existing != null) AssetDatabase.DeleteAsset(path);

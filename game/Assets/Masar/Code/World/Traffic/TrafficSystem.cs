@@ -157,7 +157,7 @@ namespace Masar.World.Traffic
             return graph.next[l.nextStart + l.nextCount - 1];
         }
 
-        float Weight(int lane) { int t = graph.lanes[lane].turn; return t == 0 ? 3f : t == 1 ? 1.5f : 1f; }
+        float Weight(int lane) { int t = graph.lanes[lane].turn; return t == 0 ? 3f : t == 1 ? 1.5f : t == 2 ? 1f : 0.35f; }
 
         void Leader(Car c, ref float gap, ref float leaderV)
         {
@@ -209,7 +209,7 @@ namespace Masar.World.Traffic
                 {
                     int other = graph.conflicts[conn.conflictStart + k];
                     if (_onLane[other].Count > 0) stop = true;
-                    else if (!j.signal && graph.lanes[other].roadClass > lane.roadClass)
+                    else if (!j.signal && graph.lanes[other].roadClass > conn.roadClass)
                     {
                         // Unsignalized: yield to higher-class cars about to enter a crossing connector
                         foreach (int p in _pred[other])
@@ -234,6 +234,7 @@ namespace Masar.World.Traffic
             var t = c.view.transform;
             Vector3 d = pp - t.position;
             if (d.sqrMagnitude > 70f * 70f) return;
+            if (Mathf.Abs(d.y) > 3f) return;   // on a flyover above or a road below
             Vector3 f = t.forward;
             float ahead = Vector3.Dot(d, f);
             if (ahead < 0f) return;

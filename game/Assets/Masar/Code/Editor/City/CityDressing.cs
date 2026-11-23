@@ -98,6 +98,7 @@ namespace Masar.EditorTools.City
                     var p = c + ax * u + ay * v;
                     if (!_area.Contains(p)) return false;
                     if (_surf.Sample(_surf.S, p) < minS) return false;
+                    if (_surf.Sample(_surf.E, p) < 3f) return false;   // clear of flyovers and trenches
                     if (_occ.Get(p)) return false;
                 }
             return true;
@@ -463,6 +464,7 @@ namespace Masar.EditorTools.City
                         if (!_area.Contains(p)) continue;
                         float r = _surf.Sample(_surf.R, p);
                         if (r < 0.4f || r > 1.4f) continue;   // in a junction or off the kerb line
+                        if (_surf.Sample(_surf.E, p) < 1.5f) continue;   // flyover / trench: RoadStructures lights those
                         Vector2 toRoad = side > 0 ? new Vector2(-dir.y, dir.x) : new Vector2(dir.y, -dir.x);
                         float yaw = Mathf.Atan2(toRoad.x, toRoad.y) * Mathf.Rad2Deg;
                         var batch = new MeshBatch();
@@ -483,6 +485,7 @@ namespace Masar.EditorTools.City
                         Sample(line, s, out var p, out var dir);
                         if (!_area.Contains(p)) continue;
                         if (_surf.Sample(_surf.R, p) < 1.2f) continue;
+                        if (_surf.Sample(_surf.E, p) < 2f) continue;   // no palms in a flyover median or a trench
                         Vector2 left = new Vector2(-dir.y, dir.x);
                         bool median = false;
                         for (float k = 2f; k <= 14f; k += 1f) if (_surf.Sample(_surf.R, p + left * k) < 0f) { median = true; break; }

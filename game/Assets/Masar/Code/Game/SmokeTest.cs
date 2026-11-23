@@ -81,8 +81,21 @@ namespace Masar.Game
                     RenderSettings.skybox = null;
                     break;
                 default:
+                    // "go.<name>": a scene root or a child of World, by name (case-insensitive), e.g. go.traffic
+                    if (feature.StartsWith("go."))
+                    {
+                        string n = feature.Substring(3);
+                        foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
+                        {
+                            if (root.name.ToLowerInvariant() == n) { root.SetActive(false); goto found; }
+                            foreach (Transform c in root.transform)
+                                if (root.name == "World" && c.name.ToLowerInvariant() == n) { c.gameObject.SetActive(false); goto found; }
+                        }
+                    }
                     Debug.LogWarning($"[MASAR smoke] unknown -masarOff feature '{feature}'");
                     return;
+                    found:
+                    break;
             }
             Debug.Log($"[MASAR smoke] switched off: {feature}");
         }
@@ -101,6 +114,13 @@ namespace Masar.Game
             SceneManager.LoadScene(Application.CanStreamedLevelBeLoaded(map) ? map : "TestBlock");
             yield return null;
             yield return null;
+            // The city streams its building blocks: measure once the blocks around the car are in
+            if (FindFirstObjectByType<Masar.World.CityLodManager>() != null)
+            {
+                float w0 = Time.realtimeSinceStartup;
+                while (!Masar.World.CityLodManager.Settled && Time.realtimeSinceStartup - w0 < 120f) yield return null;
+                Debug.Log($"[MASAR smoke] city blocks loaded: {Masar.World.CityLodManager.Needed} in {Time.realtimeSinceStartup - w0:F1}s (settled {Masar.World.CityLodManager.Settled})");
+            }
             // Optional overrides for comparable per-tier measurements
             string q = Arg("-masarQuality");
             if (q != null)

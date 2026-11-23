@@ -59,6 +59,25 @@ Scene: scanned Poly Haven asphalt with detail maps, tire-wear overlays, worn pai
 
 On the PC every car costs at most about 0.7 ms of GPU time. Scene triangles count the car about three times: the camera, the shadow cascades and the depth prepass. The Mansory is the one to watch on the iPad: about 1 M triangles drawn several times per frame. Only the chosen car is loaded (catalog entries are Resources paths), so memory grows with the chosen car, not with the catalog. Draw-call differences between runs also reflect where the car ends up after 12 s (LOD and occlusion of the city).
 
+#### Bigger Tahlia map, streamed (2026-11-23, `perf-tiers.ps1 -Map Tahlia -Seconds 30`)
+
+The 4.4 × 2.6 km map (Tahlia to Madinah Road), with each 512 m block's buildings streamed as its own scene. Same 2420×1668 scripted drive, from the new spawn in the middle of Tahlia Street, traffic and pedestrians at Normal. PC: RTX 4060 Ti, Direct3D 12.
+
+| Tier | Avg FPS | CPU main | GPU | Draw calls | Triangles | Unity alloc |
+|---|---|---|---|---|---|---|
+| Low | 195 | 4.5 ms | 1.8 ms | 2,094 | 2.9 M | 1,005 MB |
+| Medium | 129 | 7.5 ms | 2.6 ms | 3,316 | 6.4 M | 1,022 MB |
+| High | 116 | 7.9 ms | 4.2 ms | 3,270 | 6.9 M | 1,044 MB |
+| Ultra | 115 | 7.9 ms | 5.4 ms | 3,417 | 7.6 M | 1,038 MB |
+| Max | 108 | 8.3 ms | 5.5 ms | 3,751 | 10.5 M | 1,049 MB |
+
+Findings:
+- **Memory: about 1.0 GB at every tier, against 2.1 GB for the smaller map loaded whole.** 8 of 60 building blocks are loaded at the start, in 2–3 s (up to 10 s on a cold disk cache). From the menu, the map scene loads in 1.8 s and the drive starts 4.2 s after the load begins.
+- **Build size: 3.4 GB of data, largest file 364 MB** (was 5.5 GB with one 4.5 GB file, which crashed on load). City vertices are 28 bytes (64 before).
+- **Parked cars cost 95 ms per frame of CPU** before the fix (A/B, High): 10.7 fps with them, 120 fps without. They still had the vehicle script and rigidbody; they are now static copies.
+- Draw calls are high (3,300 at High) and CPU main is about 8 ms, now the larger of CPU and GPU. Most is the city's per-material renderers; not optimized yet.
+- Not measured yet: hitches when a block loads while driving fast, and the iPad.
+
 #### Tahlia / Al Rawdah map (2026-11-22, OSM city, `perf-tiers.ps1 -Map Tahlia -Seconds 15`)
 
 The same 2420×1668 scripted drive, starting on Tahlia Street at 60 % throttle (65 km/h reached), with traffic and pedestrians at Normal: 34 AI cars and about 30 Mixamo pedestrians live. These runs overlapped an iOS export on the same PC; repeated baselines agree within ±0.3 ms GPU.

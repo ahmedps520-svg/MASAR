@@ -100,6 +100,22 @@ namespace Masar.EditorTools
                 PlayerSettings.SetPlatformIcons(NamedBuildTarget.iOS, kind, icons);
             }
             Debug.Log($"[MASAR] App icon set ({n} iOS icon slots)");
+            ConfigureLaunchScreen();
+        }
+
+        /// <summary>iPad launch screen: the rounded logo tile centered on black, which the intro then picks up.</summary>
+        private static void ConfigureLaunchScreen()
+        {
+            var tile = MenuSceneBuilder.ImportLogo();
+            if (tile == null) return;
+            PlayerSettings.iOS.SetLaunchScreenImage(tile, iOSLaunchScreenImageType.iPadImage);
+            PlayerSettings.iOS.SetiPadLaunchScreenType(iOSLaunchScreenType.ImageAndBackgroundRelative);
+            var ps = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset").FirstOrDefault();
+            if (ps == null) return;
+            var so = new SerializedObject(ps);
+            Set(so, "iOSLaunchScreeniPadBackgroundColor", Color.black);
+            Set(so, "iOSLaunchScreeniPadFillPct", 29f);   // the logo's size in the intro (380 of 1320 px)
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void ConfigurePlayer()
@@ -332,6 +348,7 @@ namespace Masar.EditorTools
                     break;
                 case float f: p.floatValue = f; break;
                 case string s: p.stringValue = s; break;
+                case Color c: p.colorValue = c; break;
                 case Object o: p.objectReferenceValue = o; break;
             }
         }

@@ -14,6 +14,186 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Masar/Scenes/Tahlia.unity
     guid: d25b2e8a0909e9b449e2dcdf5d07bb31
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_3_0.unity
+    guid: e85b3809cc9c3974baaf74cc5dffdbcb
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_2_-1.unity
+    guid: 5332559a0c296e64495183c9a0d80e1f
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-1_-2.unity
+    guid: f530fe60abc314e418ca0da1ab74f5fd
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-2_-2.unity
+    guid: 0aa965f85b0253648a4b333753ab18e7
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_1_2.unity
+    guid: 56815941bbffa73488c0e17b466b2b22
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-1_1.unity
+    guid: 9e6e11752431d4f4ba0c95902dc5cedd
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_0_2.unity
+    guid: 00bec646602ba214e826679181b13f83
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_0_1.unity
+    guid: 8ae7538ecd6d8b441a75bc440726d59f
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-1_2.unity
+    guid: 8fed2e803932f384096642f6f566dc7f
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-2_1.unity
+    guid: 36d29cf24664ede4299a033a0fbf5245
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-2_2.unity
+    guid: c35911b8c103adc4bb3c4151f038aff0
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_2_2.unity
+    guid: 756b4a3e44f13be4ba375a61680e5e27
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_2_0.unity
+    guid: bb5e33590cb38b744b3313bdd49ef141
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_1_0.unity
+    guid: 0346a71666530074785ad534da0b40e6
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-3_2.unity
+    guid: a780e46b9251ac84382c136626f7c7ad
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_0_-1.unity
+    guid: 899e097b6d9fff64a96d60fcb06dc668
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-1_-1.unity
+    guid: 2a08dd9082c3d28479cae42cb22f613f
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-3_-1.unity
+    guid: ccf17397012234747895a1536447bc46
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-3_0.unity
+    guid: fb629f1bd148d21409fe64d138f529c1
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-2_0.unity
+    guid: 41af61b3d42e28e4f8872f95067c8e1e
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-2_-1.unity
+    guid: 3ad76b45a2a7b394a80e35daedfd4676
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-4_0.unity
+    guid: 4be9123f5ceb44140bbc4f2d806057ff
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-4_-2.unity
+    guid: 26d6148c5f07f664984275a34f065148
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-3_-2.unity
+    guid: 553193b154e980b44808fb6bd94754c6
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-4_2.unity
+    guid: 2aab7738a37f91e41af6f27af403c03d
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_1_-2.unity
+    guid: c0f9a7f3bbdbcaa4aaddcad2bcfb54c8
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_1_-1.unity
+    guid: 908e078fb5dc41c4b9b3b7da815965a6
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_1_1.unity
+    guid: 724e1e0d30e8f7746bebabb4c7a10054
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_2_1.unity
+    guid: cc26f07cb5780324d8bda6720a026680
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_0_0.unity
+    guid: ff77b5935984a8d4e91afe9640755481
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_3_1.unity
+    guid: 95b70d810ee641e479764048da175cb4
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-4_1.unity
+    guid: dc5ef3abd7297e5488a90b7d321eff39
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_0_-2.unity
+    guid: f04c448a9028aa247ab5e2fa0b49d702
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_0_-3.unity
+    guid: 40ef3e8d13e4ed64d90e6c3b1a9555e5
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-5_0.unity
+    guid: 82e875d674e870f4682e8d87f492bc97
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_3_-1.unity
+    guid: 1c2f6e80e71ec6b41823e41eca90776d
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_3_-2.unity
+    guid: adde3907c5e9b084d9787baf8d92a7e2
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_2_-2.unity
+    guid: 1ac7f6e19cad6114b8004f0261f6c6d3
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_4_-2.unity
+    guid: 9956fcc68a4c0d045bd54836122b5db1
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-3_-3.unity
+    guid: 4229bc0f0354b6942837999119a44b2e
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-4_-3.unity
+    guid: 40021531a08a826488dec1d017c6ebee
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-2_-3.unity
+    guid: bf37cb0799d64a74d8c53155e0a46b6f
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-1_0.unity
+    guid: be54ca081b4cfee4a9b2a105eeb2202d
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_3_2.unity
+    guid: ba163e62796716f498dd0e42ec666fda
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_1_-3.unity
+    guid: b9340d768415b7c4fbc2bccd64d09571
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-1_-3.unity
+    guid: 108fcdf9028739042a1c7269f94ca56e
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-4_-1.unity
+    guid: 824be93c24dccbb449323b88f989371d
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-5_-1.unity
+    guid: 1836a1333d1c7ff4e930949851166762
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_4_2.unity
+    guid: 8c474bbe130efb84dbf43f2a2e5ab864
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_4_-1.unity
+    guid: 2485b8fd152cd4f4488cb45e3b5b862c
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-5_1.unity
+    guid: ed1415a7fe3d91548954b45fbf6697f3
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-5_-3.unity
+    guid: f8d041a14d432a344b28f459c18e5f5f
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-3_1.unity
+    guid: 6f5346f78cd7ba84587b8f417bc0070a
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-5_-2.unity
+    guid: b91c6ecb7d99adc47a17456953d0e3ed
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_4_1.unity
+    guid: e2ee5abc189e570408865d34c217c492
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_4_0.unity
+    guid: 1c223cde8d4063a48848b9670b6384e0
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_2_-3.unity
+    guid: 2f272feba9e90d249881de68e7ae0d74
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_3_-3.unity
+    guid: 88c6743b32f9cb744a33ed0c5e486dcf
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_4_-3.unity
+    guid: 9c33e3414fc38414aba1e241cd88504c
+  - enabled: 1
+    path: Assets/Masar/Scenes/Tahlia/Tahlia_Block_-5_2.unity
+    guid: e0a2517cb2a41a6458f54c1c0a52ff3c
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

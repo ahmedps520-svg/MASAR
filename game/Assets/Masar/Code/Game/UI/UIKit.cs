@@ -13,8 +13,8 @@ namespace Masar.Game.UI
     /// </summary>
     public static class UIKit
     {
-        public static readonly Color PanelColor = new Color(0.055f, 0.062f, 0.072f, 0.985f);
-        public static readonly Color Scrim = new Color(0f, 0f, 0f, 0.6f);
+        public static readonly Color PanelColor = new Color(0.055f, 0.062f, 0.072f, 1f);
+        public static readonly Color Scrim = new Color(0f, 0f, 0f, 0.78f);
 
         /// <summary>Number of modal panels/menus open. The perf overlay and HUD hide while it is above zero.</summary>
         public static int ModalCount;
@@ -57,8 +57,23 @@ namespace Masar.Game.UI
             return row;
         }
         public static readonly Color PanelLight = new Color(0.10f, 0.11f, 0.13f, 0.92f);
-        public static readonly Color Accent = new Color(0.0f, 0.62f, 0.42f, 1f);      // emerald
-        public static readonly Color AccentDim = new Color(0.0f, 0.36f, 0.25f, 1f);
+        // Brand colors, taken from the logo: lane-paint amber and stop-sign red
+        public static readonly Color Brand = new Color(0.996f, 0.737f, 0.353f, 1f);
+        public static readonly Color BrandRed = new Color(0.94f, 0.20f, 0.20f, 1f);
+        public static readonly Color Accent = Brand;
+        public static readonly Color AccentDim = new Color(0.42f, 0.29f, 0.10f, 1f);
+        public static readonly Color TextOnLight = new Color(0.07f, 0.07f, 0.08f, 1f);
+
+        /// <summary>Label color that reads on a background: dark on light (amber), light on dark.</summary>
+        public static Color OnColor(Color bg) => 0.2126f * bg.r + 0.7152f * bg.g + 0.0722f * bg.b > 0.5f ? TextOnLight : Text;
+
+        /// <summary>Recolors a button and keeps its label readable.</summary>
+        public static void Paint(Button b, Color c)
+        {
+            b.GetComponent<Image>().color = c;
+            var label = ButtonLabel(b);
+            if (label != null) label.color = OnColor(c);
+        }
         public static readonly Color ButtonColor = new Color(0.16f, 0.17f, 0.20f, 0.95f);
         public static readonly Color Text = new Color(0.94f, 0.95f, 0.96f, 1f);
         public static readonly Color TextDim = new Color(0.66f, 0.69f, 0.73f, 1f);
@@ -172,7 +187,7 @@ namespace Masar.Game.UI
             colors.pressedColor = new Color(0.75f, 0.75f, 0.75f);
             colors.selectedColor = Color.white;
             btn.colors = colors;
-            var label = Label(img.transform, text, fontSize, Text, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var label = Label(img.transform, text, fontSize, OnColor(img.color), TextAnchor.MiddleCenter, FontStyle.Bold);
             Anchor(label.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 4), new Vector2(-12, -4));
             if (onClick != null) btn.onClick.AddListener(() => onClick());
             return btn;
@@ -236,7 +251,7 @@ namespace Masar.Game.UI
             {
                 int cur = getIndex();
                 for (int i = 0; i < buttons.Length; i++)
-                    buttons[i].GetComponent<Image>().color = i == cur ? Accent : ButtonColor;
+                    Paint(buttons[i], i == cur ? Accent : ButtonColor);
             };
             refresh();
             return refresh;

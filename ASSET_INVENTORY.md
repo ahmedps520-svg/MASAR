@@ -18,9 +18,9 @@ Every asset in the repository must have a row here before it is committed. If an
 | ID | Asset | Type | Source | License | Attribution | Added | Verified |
 |---|---|---|---|---|---|---|---|
 | G001 | MASAR Test Sedan (generic, unbranded) | Procedural mesh (placeholder) | Self-made: `Assets/Masar/Code/Editor/TestCarBuilder.cs` | Project-owned | — | 2026-11-14 | ✓ |
-| G003 | MASAR app icon (asphalt, lane line, kerb stripes, name) | 1024² PNG | Self-made: `tools/make-icon.ps1` → `Assets/Masar/Art/Icon/AppIcon.png` | Project-owned | — | 2026-11-21 | ✓ |
+| G003 | MASAR logo (black SUV on two wheels at a STOP sign, amber lane arrows on asphalt): app icon, iPad launch screen, intro and menu | 2000² PNG master + 1024² app icon + 1024² rounded tile | Provided by the owner 2026-11-23 (second version, same day, replaces the first; converted from WebP) → `Assets/Masar/Art/Brand/MasarLogo.png`; `tools/make-icon.ps1` → `Art/Icon/AppIcon.png`; rounded tile `Art/Brand/MasarLogoTile.png` | Owner's artwork, rights held by the owner | — | 2026-11-23 | ✓ Replaces the self-made 2026-11-21 icon |
 | G002 | Jeddah test block (roads, kerbs, buildings, villas, mosque, palms, lights, signal props) | Procedural meshes | Self-made: `TestBlockBuilder.cs`, `CityKit.cs` | Project-owned | — | 2026-11-14 | ✓ |
-| G004 | Tahlia / Al Rawdah city (road, kerb, sidewalk and marking meshes from the OSM roads; surveyed + generated buildings; lane graph) | Generated from O001 | Self-made: `Code/Editor/City/*` | Project-owned (derived from ODbL data: attribution shown) | © OpenStreetMap contributors | 2026-11-21 | ✓ |
+| G004 | Tahlia / Al Rawdah city, built from O002 since 2026-11-23 (road, kerb, sidewalk and marking meshes from the OSM roads; flyovers, ramps and tunnels; surveyed + generated buildings; lane graph) | Generated from O001 | Self-made: `Code/Editor/City/*` | Project-owned (derived from ODbL data: attribution shown) | © OpenStreetMap contributors | 2026-11-21 | ✓ |
 | G005 | Traffic cars (the generic test sedan in 8 paints, visual-only) and placeholder pedestrians (9 variants) | Generated prefabs | Self-made: `Code/Editor/City/TrafficKit.cs` | Project-owned | — | 2026-11-21 | ✓ |
 
 ### Selectable cars (third-party, local only, private testing)
@@ -81,6 +81,7 @@ T001–T005 were downloaded on 2026-11-14 from ambientCG as 1K-JPG sets; T006–
 | ID | Dataset | Area | Source | License | Attribution required | Added |
 |---|---|---|---|---|---|---|
 | O001 | OpenStreetMap extract, Tahlia / Al Rawdah, Jeddah: roads, buildings, land use, signals (`data/osm/tahlia-rawdah.json`) | 21.5463–21.5607 N, 39.1483–39.1637 E (about 1.6 × 1.6 km) | Overpass API via `tools/osm/fetch-osm.ps1`, downloaded 2026-11-21 with the owner's approval | ODbL 1.0 | Yes: "© OpenStreetMap contributors", shown in the main menu and on screen while driving. The generated map is a Produced Work; the extract itself is shared under ODbL in the repo | 2026-11-21 |
+| O002 | OpenStreetMap extract, Tahlia to Madinah Road and King Fahd Road, Jeddah: roads (with bridge, tunnel and layer tags), buildings, land use, signals (`data/osm/tahlia-madinah.json`). Replaces O001 as the built map | 21.5463–21.5700 N, 39.1483–39.1900 E (about 4.4 × 2.6 km) | Overpass API via `tools/osm/fetch-osm.ps1`, downloaded 2026-11-22 under the owner's approval of OSM downloads | ODbL 1.0 | Yes: same attribution as O001 | 2026-11-23 |
 
 ## Third-party code / packages
 

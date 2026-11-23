@@ -713,6 +713,7 @@ namespace Masar.EditorTools.City
                         if (!_area.Contains(p)) continue;
                         float r = _surf.Sample(_surf.R, p), sw = _surf.Sample(_surf.S, p);
                         if (r < 1.2f || sw > -0.4f) continue;   // in a junction, or off the sidewalk
+                        if (_surf.Sample(_surf.E, p) < 4f) continue;   // under a flyover deck or at a trench edge
                         if (k % 3 == 2) Palms.Add(new Vector3(p.x, RoadSurface.KerbHeight, p.y));
                         else Tree(p, 0.9f);
                     }
@@ -729,7 +730,7 @@ namespace Masar.EditorTools.City
                 for (float z = _area.yMin + 4f; z < _area.yMax - 4f; z += step)
                 {
                     var p = new Vector2(x + (float)(_rnd.NextDouble() - 0.5) * 3f, z + (float)(_rnd.NextDouble() - 0.5) * 3f);
-                    if (_occ.Get(p) || _surf.Sample(_surf.S, p) < 1.5f) continue;
+                    if (_occ.Get(p) || _surf.Sample(_surf.S, p) < 1.5f || _surf.Sample(_surf.E, p) < 4f) continue;
                     if (_rnd.NextDouble() > 0.4) continue;
                     if (_rnd.NextDouble() < 0.6) Tree(p, 0.8f + (float)_rnd.NextDouble() * 0.5f, _rnd.NextDouble() < 0.4);
                     else

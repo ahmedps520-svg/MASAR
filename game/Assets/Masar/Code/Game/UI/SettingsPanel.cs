@@ -53,7 +53,7 @@ namespace Masar.Game.UI
             UIKit.Segmented(content, "AI traffic", new[] { "Off", "Light", "Normal", "Heavy" },
                 () => s.trafficDensity,
                 i => { s.trafficDensity = i; SettingsStore.Save(); });
-            UIKit.Segmented(content, "Pedestrians (placeholder figures)", new[] { "Off", "Few", "Normal", "Busy" },
+            UIKit.Segmented(content, "Pedestrians", new[] { "Off", "Few", "Normal", "Busy" },
                 () => s.pedestrianDensity,
                 i => { s.pedestrianDensity = i; SettingsStore.Save(); });
 

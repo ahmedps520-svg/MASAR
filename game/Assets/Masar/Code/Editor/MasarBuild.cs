@@ -52,10 +52,14 @@ namespace Masar.EditorTools
         {
             MasarProjectSetup.Configure();
             WriteBuildInfo("win-" + DateTime.UtcNow.ToString("yyyyMMddHHmm"));
-            string outDir = Path.Combine(RepoRoot, "build", "windows");
+            // -masarScenes MainMenu,TestBlock: a quick build without the city (UI work), in build/windows-<names>
+            string only = ArgValue(Environment.GetCommandLineArgs(), "-masarScenes");
+            string outDir = Path.Combine(RepoRoot, "build", only == null ? "windows" : "windows-" + only.Replace(',', '-'));
             var opts = new BuildPlayerOptions
             {
-                scenes = Scenes(),
+                // A listed city also brings its streamed block scenes (Scenes/<name>/*.unity)
+                scenes = only == null ? Scenes() : Scenes().Where(s => only.Split(',').Contains(Path.GetFileNameWithoutExtension(s))
+                                                                       || only.Split(',').Contains(Path.GetFileName(Path.GetDirectoryName(s)))).ToArray(),
                 locationPathName = Path.Combine(outDir, "MASAR.exe"),
                 target = BuildTarget.StandaloneWindows64,
                 targetGroup = BuildTargetGroup.Standalone,

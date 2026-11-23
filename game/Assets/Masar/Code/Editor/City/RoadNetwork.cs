@@ -25,7 +25,32 @@ namespace Masar.EditorTools.City
             public float SpeedLimit;            // m/s
             public string Name;
             public bool Marked => Class >= RoadClass.Link;
+            // Vertical alignment (RoadGrades): height per point, the OSM layer, bridge / tunnel tags
+            public List<float> H = new List<float>();
+            public int Layer;
+            public bool Bridge, Tunnel;
+            public bool Graded;                 // any point off the ground (|H| > GroundTol)
+            public int Index;
+
+            /// <summary>Height at arc length s along the road.</summary>
+            public float HeightAt(float s)
+            {
+                float acc = 0f;
+                for (int i = 1; i < P.Count; i++)
+                {
+                    float l = (P[i] - P[i - 1]).magnitude;
+                    if (acc + l >= s) return Mathf.Lerp(H[i - 1], H[i], l > 1e-4f ? Mathf.Clamp01((s - acc) / l) : 0f);
+                    acc += l;
+                }
+                return H[H.Count - 1];
+            }
         }
+
+        /// <summary>Heights within this of zero count as ground level.</summary>
+        public const float GroundTol = 0.02f;
+        /// <summary>Roads are resampled so no segment is longer than this (ramps need the resolution).</summary>
+        public const float MaxSegment = 6f;
+        static long _synthetic = long.MinValue / 4;
 
         public sealed class Junction
         {
@@ -36,6 +61,7 @@ namespace Masar.EditorTools.City
             public bool Signal;
             public RoadClass MaxClass;
             public int Cluster;
+            public float H;
             public HashSet<string> Names = new HashSet<string>();
         }
 
@@ -54,8 +80,22 @@ namespace Masar.EditorTools.City
                 if (!TryClass(hw, w.Tag("service"), out var cls)) continue;
                 var road = new Road { Way = w, Class = cls, Name = w.Tag("name:en") ?? w.Tag("name") ?? "" };
                 foreach (var id in w.Nodes)
-                    if (map.Nodes.TryGetValue(id, out var n)) { road.P.Add(n.P); road.NodeIds.Add(id); }
+                {
+                    if (!map.Nodes.TryGetValue(id, out var n)) continue;
+                    // Resample long segments (synthetic interior points, never shared with other ways)
+                    if (road.P.Count > 0)
+                    {
+                        Vector2 a = road.P[road.P.Count - 1];
+                        int pieces = Mathf.CeilToInt((n.P - a).magnitude / MaxSegment);
+                        for (int k = 1; k < pieces; k++) { road.P.Add(Vector2.Lerp(a, n.P, (float)k / pieces)); road.NodeIds.Add(_synthetic++); }
+                    }
+                    road.P.Add(n.P); road.NodeIds.Add(id);
+                }
                 if (road.P.Count < 2) continue;
+                road.Bridge = w.Tag("bridge") != null && w.Tag("bridge") != "no";
+                road.Tunnel = w.Tag("tunnel") != null && w.Tag("tunnel") != "no" && w.Tag("tunnel") != "building_passage";
+                road.Layer = ParseInt(w.Tag("layer"));
+                if (w.Tag("layer") == null) road.Layer = road.Bridge ? 1 : road.Tunnel ? -1 : 0;
 
                 string ow = w.Tag("oneway");
                 bool oneway = ow == "yes" || ow == "1" || ow == "true" || w.Tag("junction") == "roundabout" || cls == RoadClass.Trunk && ow != "no";
@@ -79,6 +119,7 @@ namespace Masar.EditorTools.City
                 road.HalfWidth = total * 0.5f;
                 float ms = ParseFloat(w.Tag("maxspeed"));
                 road.SpeedLimit = (ms > 5f ? ms : speedKmh) / 3.6f;
+                road.Index = net.Roads.Count;
                 net.Roads.Add(road);
             }
 
@@ -118,6 +159,10 @@ namespace Masar.EditorTools.City
                 j.Names = names;
             }
 
+            // Vertical alignment: flyovers, ramps, trenches and tunnels from the OSM layer tags
+            RoadGrades.Solve(net);
+            foreach (var j in net.Junctions.Values) { var (r0, i0) = j.Arms[0]; j.H = r0.H[i0]; }
+
             // Divided roads split one real intersection into several OSM nodes (each carriageway crosses
             // the other separately). Major-road junctions within 45 m form one intersection: it is
             // signalized as a whole, and all its nodes share one signal clock and phase axis.
@@ -130,6 +175,7 @@ namespace Masar.EditorTools.City
                 {
                     var ja = list[a]; var jb = list[b];
                     if (ja.MaxClass < RoadClass.Secondary || jb.MaxClass < RoadClass.Secondary) continue;
+                    if (Mathf.Abs(ja.H - jb.H) > 2f) continue;   // a ramp junction above or below is a different intersection
                     if ((ja.P - jb.P).sqrMagnitude < 45f * 45f) parent[Find(ja)] = Find(jb);
                 }
             var clusters = new Dictionary<Junction, List<Junction>>();

@@ -18,6 +18,7 @@ namespace Masar.EditorTools.City
         sealed class LaneTmp
         {
             public List<Vector2> P;
+            public List<float> Y;   // height per point (flyovers, ramps, trenches)
             public float Speed;
             public int Junction = -1, Group;
             public byte Class, Turn;
@@ -41,7 +42,7 @@ namespace Masar.EditorTools.City
         /// <summary>Multi-node intersections (divided roads) act as one junction: one key for all their nodes.</summary>
         long Key(long node) => _net.Junctions.TryGetValue(node, out var j) && _clusterSize[j.Cluster] > 1 ? -1_000_000L - j.Cluster : node;
         bool SameCluster(long a, long b) => _net.Junctions.TryGetValue(a, out var ja) && _net.Junctions.TryGetValue(b, out var jb) && ja.Cluster == jb.Cluster && _clusterSize[ja.Cluster] > 1;
-        public int Connectors, RoadLanes, Signals;
+        public int Connectors, RoadLanes, Signals, UTurns;
 
         public LaneGraphBuilder(RoadNetwork net, RoadSurface surf, Rect area) { _net = net; _surf = surf; _area = area; }
 
@@ -67,7 +68,10 @@ namespace Masar.EditorTools.City
                     junction = l.Junction, signalGroup = l.Group, nextStart = next.Count, nextCount = l.Next.Count,
                     conflictStart = conf.Count, conflictCount = l.Conflicts.Count, roadClass = l.Class, turn = l.Turn,
                 };
-                foreach (var p in l.P) pts.Add(new Vector3(p.x, 0f, p.y));
+                for (int i = 0; i < l.P.Count; i++) pts.Add(new Vector3(l.P[i].x, l.Y[i], l.P[i].y));
+                float len3 = 0f;
+                for (int i = cl.pointStart + 1; i < pts.Count; i++) len3 += Vector3.Distance(pts[i - 1], pts[i]);
+                cl.length = len3;   // along the slope, as CityGraph.Sample measures it
                 next.AddRange(l.Next); conf.AddRange(l.Conflicts);
                 lanes.Add(cl);
             }
@@ -80,7 +84,7 @@ namespace Masar.EditorTools.City
                 // Nodes of one intersection share the clock: offset from the cluster id, green from its biggest road
                 var cmax = j.MaxClass;
                 foreach (var o in _junctionList) if (o.Cluster == j.Cluster && o.MaxClass > cmax) cmax = o.MaxClass;
-                js[i] = new CityGraph.Junction { position = new Vector3(j.P.x, 0f, j.P.y), signal = j.Signal, greenTime = cmax >= RoadClass.Primary ? 22f : 16f, cycleOffset = (float)new System.Random(j.Cluster * 7919).NextDouble() * 40f };
+                js[i] = new CityGraph.Junction { position = new Vector3(j.P.x, Lifted(j.H), j.P.y), signal = j.Signal, greenTime = cmax >= RoadClass.Primary ? 22f : 16f, cycleOffset = (float)new System.Random(j.Cluster * 7919).NextDouble() * 40f };
                 if (j.Signal) Signals++;
             }
             g.junctions = js;
@@ -103,13 +107,14 @@ namespace Masar.EditorTools.City
                 {
                     int a = cuts[c], b = cuts[c + 1];
                     var pts = road.P.GetRange(a, b - a + 1);
+                    var hts = road.H.GetRange(a, b - a + 1);
                     long na = road.NodeIds[a], nb = road.NodeIds[b];
                     if (SameCluster(na, nb)) continue;   // inside an intersection (median crossing): covered by connectors
                     float len = RoadNetwork.Length(pts);
                     float trimA = _net.Junctions.TryGetValue(na, out var ja) ? ja.Radius : 0f;
                     float trimB = _net.Junctions.TryGetValue(nb, out var jb) ? jb.Radius : 0f;
                     if (len - trimA - trimB < 3f) continue;   // too short between two junctions: no lanes
-                    var core = RoadNetwork.Trim(pts, trimA, len - trimB);
+                    var core = TrimH(pts, hts, trimA, len - trimB, out var coreH);
                     if (core.Count < 2) continue;
                     int n = road.LanesFwd + road.LanesBack;
                     float sh = road.HalfWidth - n * road.LaneWidth * 0.5f;
@@ -119,10 +124,14 @@ namespace Masar.EditorTools.City
                         float u = -road.HalfWidth + sh + road.LaneWidth * (k + 0.5f);
                         bool forward = k >= road.LanesBack;
                         var line = RoadNetwork.Offset(core, u);
-                        if (!forward) line.Reverse();
+                        var lineH = new List<float>(coreH.Count);
+                        foreach (float hh in coreH) lineH.Add(Lifted(hh));
+                        if (!forward) { line.Reverse(); lineH.Reverse(); }
+                        ClipToArea(line, out int c0, out int cn);
                         var lt = new LaneTmp
                         {
-                            P = ClipToArea(line), Speed = road.SpeedLimit, Class = (byte)road.Class,
+                            P = cn > 0 ? line.GetRange(c0, cn) : null, Y = cn > 0 ? lineH.GetRange(c0, cn) : null,
+                            Speed = road.SpeedLimit, Class = (byte)road.Class,
                             StartNode = forward ? na : nb, EndNode = forward ? nb : na,
                             Order = forward ? n - 1 - k : k, Count = forward ? road.LanesFwd : road.LanesBack,
                         };
@@ -139,17 +148,43 @@ namespace Masar.EditorTools.City
             }
         }
 
-        List<Vector2> ClipToArea(List<Vector2> line)
+        /// <summary>The longest run of points inside the map (start index and count; count 0 when none).</summary>
+        void ClipToArea(List<Vector2> line, out int start, out int count)
         {
-            // Keep the longest run inside the map
-            List<Vector2> best = null, cur = null;
-            foreach (var p in line)
+            start = 0; count = 0;
+            int runStart = -1;
+            for (int i = 0; i <= line.Count; i++)
             {
-                if (_area.Contains(p)) { cur ??= new List<Vector2>(); cur.Add(p); }
-                else { if (cur != null && (best == null || cur.Count > best.Count)) best = cur; cur = null; }
+                bool inside = i < line.Count && _area.Contains(line[i]);
+                if (inside) { if (runStart < 0) runStart = i; continue; }
+                if (runStart >= 0 && i - runStart > count) { start = runStart; count = i - runStart; }
+                runStart = -1;
             }
-            if (cur != null && (best == null || cur.Count > best.Count)) best = cur;
-            return best;
+        }
+
+        static float Lifted(float h) => h > 0f ? h + RoadStructures.Lift : h;
+
+        /// <summary><see cref="RoadNetwork.Trim"/> that also interpolates the heights.</summary>
+        static List<Vector2> TrimH(List<Vector2> pts, List<float> hs, float s0, float s1, out List<float> outH)
+        {
+            var o = new List<Vector2>(); outH = new List<float>();
+            float s = 0f;
+            for (int i = 1; i < pts.Count; i++)
+            {
+                Vector2 a = pts[i - 1], b = pts[i];
+                float l = (b - a).magnitude;
+                if (l < 1e-5f) continue;
+                float e = s + l;
+                if (e >= s0 && s <= s1)
+                {
+                    float ta = Mathf.Clamp01((s0 - s) / l), tb = Mathf.Clamp01((s1 - s) / l);
+                    var pa = Vector2.Lerp(a, b, ta);
+                    if (o.Count == 0 || (o[o.Count - 1] - pa).sqrMagnitude > 1e-6f) { o.Add(pa); outH.Add(Mathf.Lerp(hs[i - 1], hs[i], ta)); }
+                    o.Add(Vector2.Lerp(a, b, tb)); outH.Add(Mathf.Lerp(hs[i - 1], hs[i], tb));
+                }
+                s = e;
+            }
+            return o;
         }
 
         // ------------------------------------------------------------------ connectors
@@ -183,7 +218,21 @@ namespace Masar.EditorTools.City
                     foreach (int io in outs)
                     {
                         var O = _lanes[io];
-                        if (Vector2.Dot(O.DirIn, -A.DirOut) > 0.94f && (O.P[0] - A.P[A.P.Count - 1]).magnitude < 25f && isJunction) continue; // U-turn
+                        Vector2 gapV = O.P[0] - A.P[A.P.Count - 1];
+                        if (Vector2.Dot(O.DirIn, -A.DirOut) > 0.94f && gapV.magnitude < 40f && isJunction)
+                        {
+                            // U-turn (Jeddah: from the leftmost lane through a median opening or at an
+                            // intersection) onto the leftmost lane of the opposite carriageway. Only on
+                            // divided roads: the carriageways must be at least 5 m apart.
+                            bool left = Vector2.SignedAngle(A.DirOut, gapV) > 30f;
+                            if (left && gapV.magnitude > 5f && A.Order == A.Count - 1 && O.Order == O.Count - 1 && A.Class >= (byte)RoadClass.Tertiary
+                                && Mathf.Abs(A.Y[A.Y.Count - 1] - O.Y[0]) < 0.5f)
+                            {
+                                int ui = AddConnector(ia, io, jIdx, 3);
+                                if (ui >= 0) { A.Next.Add(ui); UTurns++; }
+                            }
+                            continue;
+                        }
                         bool placed = false;
                         foreach (var grp in exitsByDir)
                             if (Vector2.Dot(_lanes[grp[0]].DirIn, O.DirIn) > 0.97f && (_lanes[grp[0]].P[0] - O.P[0]).magnitude < 15f) { grp.Add(io); placed = true; break; }
@@ -232,21 +281,26 @@ namespace Masar.EditorTools.City
             Vector2 p0 = A.P[A.P.Count - 1], p3 = B.P[0];
             float d = (p3 - p0).magnitude;
             if (d < 0.05f) return -1;
-            float h = d * 0.4f;
+            bool uturn = turn == 3;
+            // U-turns: control points for a half circle across the median (4/3 r, r = d / 2)
+            float h = uturn ? Mathf.Max(3f, d * 0.67f) : d * 0.4f;
             Vector2 p1 = p0 + A.DirOut * h, p2 = p3 - B.DirIn * h;
-            var pts = new List<Vector2>();
-            int steps = Mathf.Clamp(Mathf.CeilToInt(d / 2f), 3, 16);
+            var pts = new List<Vector2>(); var ys = new List<float>();
+            float y0 = A.Y[A.Y.Count - 1], y3 = B.Y[0];
+            int steps = Mathf.Clamp(Mathf.CeilToInt(d / 2f), uturn ? 10 : 3, 16);
             for (int k = 0; k <= steps; k++)
             {
                 float t = (float)k / steps, u = 1f - t;
                 pts.Add(u * u * u * p0 + 3f * u * u * t * p1 + 3f * u * t * t * p2 + t * t * t * p3);
+                ys.Add(Mathf.Lerp(y0, y3, t * t * (3f - 2f * t)));
             }
             // Curve speed: v = sqrt(a_lat * R), R from the heading change over the length
             float heading = Mathf.Abs(Vector2.Angle(A.DirOut, B.DirIn)) * Mathf.Deg2Rad;
             float len = RoadNetwork.Length(pts);
             float radius = heading > 0.05f ? len / heading : 1000f;
             float speed = Mathf.Min(Mathf.Min(A.Speed, B.Speed), Mathf.Sqrt(2.6f * radius));
-            var c = new LaneTmp { P = pts, Speed = Mathf.Max(3f, speed), Junction = junction, Class = A.Class, Turn = turn, DirIn = A.DirOut, DirOut = B.DirIn };
+            // U-turners have the lowest priority: they yield to everyone at unsignalized openings
+            var c = new LaneTmp { P = pts, Y = ys, Speed = Mathf.Max(uturn ? 2.5f : 3f, speed), Junction = junction, Class = uturn ? (byte)0 : A.Class, Turn = turn, DirIn = A.DirOut, DirOut = B.DirIn };
             c.Next.Add(to);
             _lanes.Add(c);
             Connectors++;
@@ -319,7 +373,8 @@ namespace Masar.EditorTools.City
                     }
                     foreach (var p in dense)
                     {
-                        bool ok = _area.Contains(p) && _surf.Sample(_surf.R, p) > 0.8f && _surf.Sample(_surf.S, p) < -0.3f;
+                        bool ok = _area.Contains(p) && _surf.Sample(_surf.Rg, p) > 0.8f && _surf.Sample(_surf.Sg, p) < -0.3f
+                                  && _surf.Sample(_surf.E, p) > 1f && _surf.VoidField(_surf.Index(p)) < 0f;
                         if (ok) run.Add(p); else Flush();
                     }
                     Flush();

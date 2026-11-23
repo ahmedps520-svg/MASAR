@@ -282,6 +282,59 @@ namespace Masar.World
             return m;
         }
 
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct PackedVertex
+        {
+            public Vector3 p;
+            public sbyte nx, ny, nz, nw;
+            public sbyte tx, ty, tz, tw;
+            public Vector2 uv;
+        }
+
+        private static readonly VertexAttributeDescriptor[] PackedLayout =
+        {
+            new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.SNorm8, 4),
+            new VertexAttributeDescriptor(VertexAttribute.Tangent, VertexAttributeFormat.SNorm8, 4),
+            new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2),
+        };
+
+        private static sbyte Snorm(float v) => (sbyte)Mathf.RoundToInt(Mathf.Clamp(v, -1f, 1f) * 127f);
+
+        /// <summary>
+        /// Rewrites a mesh in a 28-byte vertex format: float positions and UVs (world-space UVs on a
+        /// 4 km map need full precision), 8-bit normals and tangents, no vertex colours (no MASAR shader
+        /// reads them). The default layout is 64 bytes. Used for the city, where vertex data was most of
+        /// the 5.5 GB build (2026-11-23).
+        /// </summary>
+        public static void Compact(Mesh m)
+        {
+            var pos = m.vertices; var nrm = m.normals; var tan = m.tangents; var uv = m.uv;
+            int n = pos.Length;
+            if (n == 0) return;
+            bool hasTan = tan.Length == n, hasUv = uv.Length == n;
+            var format = m.indexFormat;
+            var subs = new int[m.subMeshCount][];
+            for (int s = 0; s < subs.Length; s++) subs[s] = m.GetTriangles(s);
+            var data = new PackedVertex[n];
+            for (int i = 0; i < n; i++)
+            {
+                var v = new PackedVertex { p = pos[i], uv = hasUv ? uv[i] : Vector2.zero };
+                Vector3 nn = nrm[i];
+                v.nx = Snorm(nn.x); v.ny = Snorm(nn.y); v.nz = Snorm(nn.z); v.nw = 0;
+                Vector4 tt = hasTan ? tan[i] : new Vector4(1f, 0f, 0f, 1f);
+                v.tx = Snorm(tt.x); v.ty = Snorm(tt.y); v.tz = Snorm(tt.z); v.tw = (sbyte)(tt.w < 0f ? -127 : 127);
+                data[i] = v;
+            }
+            m.Clear();
+            m.indexFormat = format;
+            m.SetVertexBufferParams(n, PackedLayout);
+            m.SetVertexBufferData(data, 0, 0, n);
+            m.subMeshCount = subs.Length;
+            for (int s = 0; s < subs.Length; s++) m.SetTriangles(subs[s], s, false);
+            m.RecalculateBounds();
+        }
+
         /// <summary>Appends another builder's geometry (already in world space).</summary>
         public void Append(MeshBuilder o)
         {

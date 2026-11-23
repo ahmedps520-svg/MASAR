@@ -57,18 +57,7 @@ namespace Masar.EditorTools
 
         // ------------------------------------------------------------------ menu scene
 
-        private static void BuildMenuScene()
-        {
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            var cam = new GameObject("Main Camera", typeof(Camera)).GetComponent<Camera>();
-            cam.tag = "MainCamera";
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.04f, 0.05f, 0.07f);
-            var data = cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
-            data.renderPostProcessing = false;
-            new GameObject("MainMenu").AddComponent<MainMenu>();
-            EditorSceneManager.SaveScene(scene, MenuScenePath);
-        }
+        private static void BuildMenuScene() => MenuSceneBuilder.Build();
 
         // ------------------------------------------------------------------ drive scene
 

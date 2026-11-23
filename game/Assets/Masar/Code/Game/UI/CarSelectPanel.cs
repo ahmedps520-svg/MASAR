@@ -40,7 +40,7 @@ namespace Masar.Game.UI
             foreach (var e in catalog.cars)
             {
                 if (e == null || !e.IsAvailable || string.IsNullOrEmpty(e.credit) || e.id == "test_sedan") continue;
-                if (!first) credits.Append("  Â·  ");
+                if (!first) credits.Append("  ·  ");
                 credits.Append(e.credit).Append(" [").Append(e.license).Append(']');
                 first = false;
             }

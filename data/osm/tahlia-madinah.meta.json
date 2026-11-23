@@ -1,0 +1,10 @@
+﻿{
+    "name":  "tahlia-madinah",
+    "south":  21.5463,
+    "west":  39.1483,
+    "north":  21.57,
+    "east":  39.19,
+    "source":  "https://overpass-api.de/api/interpreter",
+    "downloaded":  "2026-11-22T22:32:13.8715375Z",
+    "license":  "ODbL 1.0, (c) OpenStreetMap contributors"
+}

@@ -24,8 +24,17 @@ namespace Masar.EditorTools.City
 
         public readonly int Nx, Nz;
         public readonly Vector2 Origin;
+        /// <summary>All roads, flyovers included: used to keep buildings, trees and parks off every road.</summary>
         public float[] R, S;
         public byte[] Cls;
+        /// <summary>Ground-level roads only (no flyover, ramp or trench segments): the surfaces that are built at y = 0.</summary>
+        public float[] Rg, Sg;
+        /// <summary>Nearest ground road (index into the network) per grid point, -1 for none.</summary>
+        public int[] Rid;
+        /// <summary>Distance to the footprint of any road segment off the ground (negative inside).</summary>
+        public float[] E;
+        /// <summary>Distance to an open trench (negative inside): no ground surface there.</summary>
+        public float[] V;
 
         readonly RoadNetwork _net;
 
@@ -35,7 +44,75 @@ namespace Masar.EditorTools.City
             Origin = area.min;
             Nx = Mathf.CeilToInt(area.width / Cell) + 1;
             Nz = Mathf.CeilToInt(area.height / Cell) + 1;
-            ComputeFields();
+            ComputeFields(null, out R, out S, out Cls, out _);
+            ComputeFields((r, s) => !SegGraded(r, s), out Rg, out Sg, out _, out Rid);
+            Footprints();
+        }
+
+        public static bool SegGraded(RoadNetwork.Road r, int s) => Mathf.Abs(r.H[s - 1]) > RoadNetwork.GroundTol || Mathf.Abs(r.H[s]) > RoadNetwork.GroundTol;
+        static bool SegDepressed(RoadNetwork.Road r, int s) => r.H[s - 1] < -RoadNetwork.GroundTol || r.H[s] < -RoadNetwork.GroundTol;
+
+        /// <summary>
+        /// Ground surfaces above a trench are cut away, except a ground road that crosses it (with its
+        /// sidewalks): it sits on a deck over the trench. Returns a field to combine with Max().
+        /// </summary>
+        public float VoidField(int k)
+        {
+            if (V[k] >= 0f) return -1000f;
+            int id = Rid[k];
+            if (id >= 0 && !_net.Roads[id].Graded && Sg[k] < 0f) return -1000f;
+            return -V[k];
+        }
+
+        public bool Crossing(int k) { int id = Rid[k]; return id >= 0 && !_net.Roads[id].Graded && Sg[k] < 0f; }
+
+        public int Index(Vector2 p)
+        {
+            int i = Mathf.Clamp(Mathf.RoundToInt((p.x - Origin.x) / Cell), 0, Nx - 1), j = Mathf.Clamp(Mathf.RoundToInt((p.y - Origin.y) / Cell), 0, Nz - 1);
+            return j * Nx + i;
+        }
+
+        void Footprints()
+        {
+            int n = Nx * Nz;
+            E = new float[n]; V = new float[n];
+            for (int k = 0; k < n; k++) { E[k] = 1000f; V[k] = 1000f; }
+            foreach (var r in _net.Roads)
+            {
+                if (!r.Graded) continue;
+                float reach = r.HalfWidth + 6f;
+                for (int s = 1; s < r.P.Count; s++)
+                {
+                    if (!SegGraded(r, s)) continue;
+                    bool trench = SegDepressed(r, s) && !r.Tunnel;
+                    Vector2 a = r.P[s - 1], b = r.P[s];
+                    Box(a, b, reach, out int i0, out int i1, out int j0, out int j1);
+                    for (int j = j0; j <= j1; j++)
+                        for (int i = i0; i <= i1; i++)
+                        {
+                            int k = j * Nx + i;
+                            var p = GridPos(i, j);
+                            float dist = RoadNetwork.SegDist(p, a, b, out float t);
+                            float e = dist - r.HalfWidth;
+                            if (e < E[k]) E[k] = e;
+                            if (!trench) continue;
+                            // Flat-ended: the trench starts and stops at its points, never with a round cap
+                            Vector2 ab = b - a; float l2 = ab.sqrMagnitude;
+                            float tt = l2 > 1e-6f ? Vector2.Dot(p - a, ab) / l2 : 0f;
+                            if (tt < -0.02f || tt > 1.02f) continue;
+                            float v = dist - (r.HalfWidth + 0.6f);
+                            if (v < V[k]) V[k] = v;
+                        }
+                }
+            }
+        }
+
+        void Box(Vector2 a, Vector2 b, float reach, out int i0, out int i1, out int j0, out int j1)
+        {
+            i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - reach - Origin.x) / Cell));
+            i1 = Mathf.Min(Nx - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + reach - Origin.x) / Cell));
+            j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - reach - Origin.y) / Cell));
+            j1 = Mathf.Min(Nz - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + reach - Origin.y) / Cell));
         }
 
         public Vector2 GridPos(int i, int j) => Origin + new Vector2(i * Cell, j * Cell);
@@ -59,31 +136,31 @@ namespace Masar.EditorTools.City
 
         // ------------------------------------------------------------------ fields
 
-        void ComputeFields()
+        /// <summary>Road (R) and sidewalk-edge (S) distance fields over the segments that pass the filter (all when null).</summary>
+        void ComputeFields(System.Func<RoadNetwork.Road, int, bool> include, out float[] R, out float[] S, out byte[] cls, out int[] rid)
         {
             int n = Nx * Nz;
             var d = new float[n];
             var dsw = new float[n];
             var sw = new float[n];
-            Cls = new byte[n];
-            for (int k = 0; k < n; k++) { d[k] = 1000f; dsw[k] = 1000f; }
+            cls = new byte[n];
+            rid = new int[n];
+            for (int k = 0; k < n; k++) { d[k] = 1000f; dsw[k] = 1000f; rid[k] = -1; }
             foreach (var r in _net.Roads)
             {
                 float reach = r.HalfWidth + r.Sidewalk + CornerRadius + 3f;
                 for (int s = 1; s < r.P.Count; s++)
                 {
+                    if (include != null && !include(r, s)) continue;
                     Vector2 a = r.P[s - 1], b = r.P[s];
-                    int i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - reach - Origin.x) / Cell));
-                    int i1 = Mathf.Min(Nx - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + reach - Origin.x) / Cell));
-                    int j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - reach - Origin.y) / Cell));
-                    int j1 = Mathf.Min(Nz - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + reach - Origin.y) / Cell));
+                    Box(a, b, reach, out int i0, out int i1, out int j0, out int j1);
                     for (int j = j0; j <= j1; j++)
                         for (int i = i0; i <= i1; i++)
                         {
                             float dist = RoadNetwork.SegDist(GridPos(i, j), a, b, out _);
                             int k = j * Nx + i;
                             float v = dist - r.HalfWidth;
-                            if (v < d[k]) { d[k] = v; Cls[k] = (byte)r.Class; sw[k] = r.Sidewalk; }
+                            if (v < d[k]) { d[k] = v; cls[k] = (byte)r.Class; sw[k] = r.Sidewalk; rid[k] = r.Index; }
                             float v2 = v - r.Sidewalk;
                             if (v2 < dsw[k]) dsw[k] = v2;
                         }

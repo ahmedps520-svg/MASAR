@@ -59,7 +59,7 @@ namespace Masar.EditorTools
             new Spec
             {
                 Id = "jetta_gli", Name = "Volkswagen Jetta GLI 2025", Source = "jetta_gli/scene.gltf",
-                Summary = "Sport sedan Â· FWD Â· 2.0 turbo, â‰ˆ230 hp class Â· full interior",
+                Summary = "Sport sedan · FWD · 2.0 turbo, ≈230 hp class · full interior",
                 Credit = "\"Volkswagen Jetta GLI (2025)\" by geyges on Sketchfab (sketchfab.com/3d-models/volkswagen-jetta-gli-2025-4adbe6ffcf5246ddac95921cb39bd2bf)",
                 License = "Sketchfab Standard (not redistributable)",
                 Warning = "Private testing only: real brand, origin unverified",
@@ -76,7 +76,7 @@ namespace Masar.EditorTools
             new Spec
             {
                 Id = "elantra_n", Name = "Hyundai Elantra N 2024", Source = "elantra_n/scene.gltf",
-                Summary = "Sport sedan Â· FWD Â· 2.0 turbo, â‰ˆ280 hp class Â· interior (static wheel)",
+                Summary = "Sport sedan · FWD · 2.0 turbo, ≈280 hp class · interior (static wheel)",
                 Credit = "\"2024 Hyundai Elantra N\" by Ddiaz Design on Sketchfab (sketchfab.com/3d-models/2024-hyundai-elantra-n-4ba1b1b0eb844e318cc708ada1f2f51f), CC BY-NC-SA 4.0",
                 License = "CC BY-NC-SA 4.0 (non-commercial)",
                 Warning = "Private testing only: non-commercial license, real brand",
@@ -92,10 +92,10 @@ namespace Masar.EditorTools
             new Spec
             {
                 Id = "aventador_svj", Name = "Lamborghini Aventador SVJ", Source = "aventador_svj/scene.gltf",
-                Summary = "V12 supercar Â· AWD Â· â‰ˆ770 hp class Â· no interior",
+                Summary = "V12 supercar · AWD · ≈770 hp class · no interior",
                 Credit = "\"lamborghini aventador lp 770-4 svj\" by amogusstrikesback2 on Sketchfab (sketchfab.com/3d-models/lamborghini-aventador-lp-770-4-svj-71460dcc354045ddb1e7a8670678ffca), CC BY 4.0",
                 License = "CC BY 4.0",
-                Warning = "Real brand Â· the model has no interior",
+                Warning = "Real brand · the model has no interior",
                 Tire = @"Wheel(FL|FR|BL|BR)", Carrier = @"caliper", Paint = @"carpaint", Glass = @"glasses_glass",
                 Tail = @"lights_brakes|lights_position_back", Position = @"lights_position_front_and_back", Reverse = @"lights_reverse",
                 FrontShare = 0.43f, ComHeight = 0.42f,
@@ -104,7 +104,7 @@ namespace Masar.EditorTools
             new Spec
             {
                 Id = "aventador_mansory", Name = "Aventador SVJ Mansory twin-turbo", Source = "aventador_mansory/aventador_mansory.glb",
-                Summary = "Tuned V12 supercar Â· AWD Â· â‰ˆ1,000 hp class Â· very heavy model",
+                Summary = "Tuned V12 supercar · AWD · ≈1,000 hp class · very heavy model",
                 Credit = "\"Lamborghini Aventador SVJ Mansory Twin Turbo PBR\" by VTX on Sketchfab (sketchfab.com/3d-models/7fc25aa2e7a24e28be35829d635e93fa), CC BY-NC-SA 4.0",
                 License = "CC BY-NC-SA 4.0 (non-commercial)",
                 Warning = "Private testing only: non-commercial license, real brands, ~1M triangles",
@@ -210,7 +210,7 @@ namespace Masar.EditorTools
                 entries.Add(new CarCatalog.Entry
                 {
                     id = "test_sedan", displayName = "MASAR test sedan", prefab = sedan,
-                    summary = "Generic sedan Â· FWD Â· 2.5 L class Â· procedural placeholder",
+                    summary = "Generic sedan · FWD · 2.5 L class · procedural placeholder",
                     credit = "Self-made (TestCarBuilder.cs)", license = "Project-owned",
                     triangles = CountTriangles(sedan), hasInterior = true,
                 });

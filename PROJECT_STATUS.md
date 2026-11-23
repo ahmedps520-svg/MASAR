@@ -1,6 +1,6 @@
 # MASAR: Project Status
 
-**Phase:** Month 2 (approved 2026-11-21) · **Last updated:** 2026-11-21 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
+**Phase:** Month 2 (approved 2026-11-21) · **Last updated:** 2026-11-23 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
 
 ## Summary
 
@@ -31,6 +31,8 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **Runs on the iPad Pro M5 (TestFlight build 11, 2026-11-21):** installs, launches, drives. Ultra at about 90 fps (owner's observation) | PERFORMANCE_REPORT.md (device numbers still to capture) |
 | **Wheel bridge (2026-11-21):** G923 → Windows PC → Wi-Fi → iPad, with force feedback from the simulation. Loopback test: 250 Hz, 0 lost, 3–4 ms round trip | BUILD_INSTRUCTIONS §5a, `WheelBridgeSelfTest` |
 | **Wheel bridge on the real G923 (2026-11-21):** the first owner test showed only Cross and Square working (wheel in PlayStation compatibility mode). Bridge rebuilt on DirectInput + G HUB's PC mode: steering read in the background, force feedback measured in both directions (+148° / −265° at 25 %), pedals 0 at rest | `MasarWheelBridge --test-ffb`, `--probe` |
+| **Main menu, intro and logo (2026-11-23):** the owner's logo as app icon, iPad launch screen and intro; menu over a 3D showroom of the selected car; loading screen with real progress | `-masarUiCapture` screens 00–10 |
+| **Bigger city streams (2026-11-23):** 4.4 × 2.6 km map, buildings in 60 block scenes loaded around the camera; build 3.4 GB (was 5.5 GB and crashed on load); about 1.0 GB in memory; High 116 fps in the middle of the map on the PC | PERFORMANCE_REPORT.md |
 
 ## In progress (Month 2)
 

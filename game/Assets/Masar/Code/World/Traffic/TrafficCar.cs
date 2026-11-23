@@ -38,7 +38,7 @@ namespace Masar.World.Traffic
         public void Place(Vector3 pos, Vector3 tan)
         {
             if (_rb == null) Awake();
-            var rot = Quaternion.LookRotation(Flat(tan), Vector3.up);
+            var rot = Quaternion.LookRotation(Pitched(Flat(tan), tan), Vector3.up);
             transform.SetPositionAndRotation(pos, rot);
             _rb.position = pos; _rb.rotation = rot;
             _lastTan = Flat(tan);
@@ -48,9 +48,10 @@ namespace Masar.World.Traffic
         {
             Vector3 t = Flat(tan);
             // Smooth the heading slightly so polyline corners don't snap the body
-            Vector3 heading = Vector3.Slerp(transform.forward, t, Mathf.Clamp01(dt * 12f));
+            Vector3 heading = Vector3.Slerp(Flat(transform.forward), t, Mathf.Clamp01(dt * 12f));
             _rb.MovePosition(pos);
-            _rb.MoveRotation(Quaternion.LookRotation(heading, Vector3.up));
+            // Pitch with the road on ramps and flyovers
+            _rb.MoveRotation(Quaternion.LookRotation(Pitched(heading, tan), Vector3.up));
 
             float yawRate = Vector3.SignedAngle(_lastTan, t, Vector3.up) * Mathf.Deg2Rad / Mathf.Max(1e-4f, dt);
             _lastTan = t;
@@ -81,5 +82,12 @@ namespace Masar.World.Traffic
         }
 
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v.sqrMagnitude > 1e-6f ? v.normalized : Vector3.forward; }
+
+        static Vector3 Pitched(Vector3 flatHeading, Vector3 tan)
+        {
+            float horiz = new Vector2(tan.x, tan.z).magnitude;
+            float slope = horiz > 1e-4f ? Mathf.Clamp(tan.y / horiz, -0.2f, 0.2f) : 0f;
+            return (flatHeading + Vector3.up * slope).normalized;
+        }
     }
 }

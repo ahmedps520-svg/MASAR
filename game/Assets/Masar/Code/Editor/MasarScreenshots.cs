@@ -39,6 +39,7 @@ namespace Masar.EditorTools
             int si = System.Array.IndexOf(args, "-masarScene");
             bool city = si >= 0 && si + 1 < args.Length && args[si + 1] == "Tahlia";
             var scene = EditorSceneManager.OpenScene(city ? City.OsmCityBuilder.TahliaScene : TestBlockBuilder.ScenePath, OpenSceneMode.Single);
+            if (city) City.OsmCityBuilder.OpenBlockScenes();   // the streamed buildings
             if (city) quality = "Tahlia_" + quality;
             var car = Object.FindFirstObjectByType<Masar.Vehicles.VehicleController>();
 
@@ -73,6 +74,15 @@ namespace Masar.EditorTools
                 new View { Name = "09_junction_ahead", Pos = c + fwd * 120f + rgt * 25f + Vector3.up * 18f, LookAt = c + fwd * 220f, Fov = 60f },
                 new View { Name = "10_car_side", Pos = c + rgt * -5.5f + Vector3.up * 1.1f + fwd * 0.5f, LookAt = c + Vector3.up * 0.7f, Fov = 45f },
                 new View { Name = "11_pedestrians", Pos = c + fwd * 4f - rgt * 3f + Vector3.up * 1.6f, LookAt = c + fwd * 14f - rgt * 3f + Vector3.up * 1.0f, Fov = 55f },
+                // Structures of the Tahlia-Madinah map (local meters, origin at the map center)
+                new View { Name = "12_saud_flyover_aerial", Pos = new Vector3(20f, 60f, 480f), LookAt = new Vector3(180f, 5f, 700f), Fov = 55f },
+                new View { Name = "13_saud_flyover_street", Pos = new Vector3(-215f, 1.7f, 560f), LookAt = new Vector3(-100f, 6f, 620f), Fov = 60f },
+                new View { Name = "14_kingfahd_interchange", Pos = new Vector3(1700f, 70f, -120f), LookAt = new Vector3(1870f, 0f, 140f), Fov = 55f },
+                new View { Name = "15_madinah_over_tahlia", Pos = new Vector3(420f, 60f, -330f), LookAt = new Vector3(544f, -5f, -227f), Fov = 55f },
+                new View { Name = "16_madinah_viaduct", Pos = new Vector3(620f, 35f, -820f), LookAt = new Vector3(470f, 7f, -260f), Fov = 55f },
+                new View { Name = "17_tahlia_bridge_street", Pos = new Vector3(1560f, 1.7f, 40f), LookAt = new Vector3(1652f, 7f, 72f), Fov = 60f },
+                new View { Name = "18_tahlia_tunnel_portal", Pos = new Vector3(280f, 14f, -250f), LookAt = new Vector3(400f, -5f, -280f), Fov = 58f },
+                new View { Name = "19_kingfahd_tunnel_portal", Pos = new Vector3(1830f, 12f, 330f), LookAt = new Vector3(1880f, -6f, 200f), Fov = 58f },
             };
             if (city)
             {

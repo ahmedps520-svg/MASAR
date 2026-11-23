@@ -37,6 +37,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 | AI traffic v1 (lane graph, IDM, signals, junction conflicts) | 🟡 | Cars follow lanes, stop at red, yield at junctions, react to the player. Lane changes are v2 |
 | Pedestrians v1 | 🟡 | Walk the sidewalks with placeholder bodies. Mixamo characters once provided. Road crossing is v2 |
 | Max graphics tier | 🟡 | Measured on the iPad in the city |
+| City streaming (2026-11-23) | 🟡 | Each 512 m block's buildings is its own scene, loaded around the camera (far boxes stay up until the detail is in). The loading screen waits for the blocks around the car. Done on PC; to be measured on the iPad (memory, hitches while driving) |
+| Main menu, intro and logo (2026-11-23) | ✅ | The owner's logo is the app icon, the iPad launch screen and the intro. Menu over a 3D showroom of the selected car. All screens checked at iPad aspect |
 | Items below (hero vehicle, physics, audio, APV lighting, Arabic) | ⬜ | As listed |
 
 Dependencies: Gate 0.
