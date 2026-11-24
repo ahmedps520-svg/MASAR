@@ -34,7 +34,7 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **Main menu, intro and logo (2026-11-23):** the owner's logo as app icon, iPad launch screen and intro; menu over a 3D showroom of the selected car; loading screen with real progress | `-masarUiCapture` screens 00–10 |
 | **Bigger city streams (2026-11-23):** 4.4 × 2.6 km map, buildings in 60 block scenes loaded around the camera; build 3.4 GB (was 5.5 GB and crashed on load); about 1.0 GB in memory; High 116 fps in the middle of the map on the PC | PERFORMANCE_REPORT.md |
 | **TestFlight build 21 (2026-11-24):** the streamed bigger city, loading screen, new menu, intro and logo. Processed and available in TestFlight. Signing had hit Apple's certificate limit; each CI run now revokes the certificates it creates (KNOWN_ISSUES T18) | Actions run 45356612623 |
-| **TestFlight build 27 (2026-11-24):** fixes the car stuck at the city spawn (an invisible 211 m building collision box on Tahlia Street; outline buildings now collide along their outline, KNOWN_ISSUES C13). On the PC all five cars drive off from the spawn | Actions run 45432443677 |
+| **TestFlight build 27 (2026-11-24):** fixes the car stuck at the city spawn (an invisible 211 m building collision box on Tahlia Street; outline buildings now collide along their outline, KNOWN_ISSUES C13). On the PC three of the five cars were tested and drive off from the spawn | Actions run 45432443677 |
 
 ## In progress (Month 2)
 
