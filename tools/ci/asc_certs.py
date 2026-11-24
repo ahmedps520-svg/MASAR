@@ -29,7 +29,9 @@ from cryptography.x509.oid import NameOID
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from testflight_invite import call, errors_text  # same API key handling
 
-SLACK = dt.timedelta(minutes=2)
+# Apple backdates a certificate's issue time: those MASAR runs created show up about 9 minutes
+# before their run started. Look 15 minutes back, and 2 minutes past the run's end.
+BEFORE, AFTER = dt.timedelta(minutes=15), dt.timedelta(minutes=2)
 
 
 def certificates():
@@ -106,7 +108,7 @@ def main(argv):
                         dt.datetime.fromisoformat(w["end"].replace("Z", "+00:00"))) for w in json.load(f)]
         chosen, others = [], 0
         for c in sorted(certs, key=lambda c: c["issued"]):
-            run = next((i for i, s, e in windows if s - SLACK <= c["issued"] <= e + SLACK), None)
+            run = next((i for i, s, e in windows if s - BEFORE <= c["issued"] <= e + AFTER), None)
             if run and c["api"]:
                 chosen.append(c)
             elif run:
