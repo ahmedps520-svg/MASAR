@@ -272,6 +272,7 @@ namespace Masar.EditorTools.City
                 go.AddComponent<BoxCollider>().size = size;
                 GameObjectUtility.SetStaticEditorFlags(go, (StaticEditorFlags)0);
             }
+            AddOutlineWalls(colRoot, dress.Walls);
             AssetDatabase.StopAssetEditing();   // mesh assets written in one batch (much faster)
             var palmRoot = new GameObject("Palms").transform; palmRoot.SetParent(world, false);
             int seed = 1;
@@ -715,6 +716,38 @@ namespace Masar.EditorTools.City
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, TahliaScene);
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// One static mesh collider of vertical walls along the outlines of buildings drawn from their OSM
+        /// polygon. Both windings, so contacts and wheel rays work from either side.
+        /// </summary>
+        static void AddOutlineWalls(Transform parent, List<(List<Vector2> poly, float h)> walls)
+        {
+            var v = new List<Vector3>();
+            var t = new List<int>();
+            float y0 = RoadSurface.KerbHeight - 0.2f;
+            foreach (var (poly, h) in walls)
+                for (int i = 0; i < poly.Count; i++)
+                {
+                    Vector2 a = poly[i], b = poly[(i + 1) % poly.Count];
+                    int k = v.Count;
+                    v.Add(new Vector3(a.x, y0, a.y)); v.Add(new Vector3(b.x, y0, b.y));
+                    v.Add(new Vector3(b.x, y0 + h, b.y)); v.Add(new Vector3(a.x, y0 + h, a.y));
+                    t.AddRange(new[] { k, k + 2, k + 1, k, k + 3, k + 2, k, k + 1, k + 2, k, k + 2, k + 3 });
+                }
+            var mesh = new Mesh { name = "BuildingOutlineWalls", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.SetVertices(v);
+            mesh.SetTriangles(t, 0);
+            mesh.RecalculateBounds();
+            string path = $"{GenDir}/BuildingOutlineWalls.asset";
+            AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(mesh, path);
+            var go = new GameObject("OutlineWalls");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshCollider>().sharedMesh = mesh;
+            GameObjectUtility.SetStaticEditorFlags(go, (StaticEditorFlags)0);
+            Debug.Log($"[MASAR] Outline collision walls: {walls.Count} buildings, {t.Count / 6} wall quads");
         }
 
         /// <summary>

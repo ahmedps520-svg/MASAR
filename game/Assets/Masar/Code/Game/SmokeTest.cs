@@ -100,6 +100,25 @@ namespace Masar.Game
             Debug.Log($"[MASAR smoke] switched off: {feature}");
         }
 
+        /// <summary>Car state plus every collider (not the car's own) overlapping its bounds, to find what blocks it.</summary>
+        private static void LogCar(VehicleController car, string when)
+        {
+            var tel = car.Telemetry;
+            var rb = car.GetComponent<Rigidbody>();
+            var sb = new System.Text.StringBuilder();
+            Bounds b = default; bool any = false;
+            foreach (var c in car.GetComponentsInChildren<Collider>())
+            {
+                if (c.isTrigger) continue;
+                if (!any) { b = c.bounds; any = true; } else b.Encapsulate(c.bounds);
+            }
+            if (any)
+                foreach (var c in Physics.OverlapBox(b.center, b.extents + Vector3.one * 0.05f, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
+                    if (!c.transform.IsChildOf(car.transform)) sb.Append(c.name).Append(" (").Append(c.GetType().Name).Append(c.transform.parent ? " in " + c.transform.parent.name : "").Append("); ");
+            Debug.Log($"[MASAR smoke] car {when}: pos {car.transform.position} up {car.transform.up.y:F3} speed {tel.SpeedMs * 3.6f:F1} km/h gear {tel.Gear} rpm {tel.EngineRpm:F0} " +
+                      $"thr {tel.Throttle:F2} brk {tel.Brake:F2} grounded {tel.GroundedWheels} kinematic {(rb ? rb.isKinematic : false)} sleeping {(rb ? rb.IsSleeping() : false)} | touching: {sb}");
+        }
+
         private static int PedCount()
         {
             var ps = FindFirstObjectByType<Masar.World.Traffic.PedestrianSystem>();
@@ -111,9 +130,28 @@ namespace Masar.Game
             string dir = Application.persistentDataPath;
             Debug.Log($"[MASAR smoke] start, output to {dir}");
             string map = Arg("-masarMap") ?? "TestBlock";
-            SceneManager.LoadScene(Application.CanStreamedLevelBeLoaded(map) ? map : "TestBlock");
-            yield return null;
-            yield return null;
+            if (!Application.CanStreamedLevelBeLoaded(map)) map = "TestBlock";
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-masarViaMenu") >= 0)
+            {
+                // The player's path: main menu -> Free Drive -> loading screen (which pauses time while city blocks load)
+                SceneManager.LoadScene("MainMenu");
+                yield return null;
+                yield return null;
+                FindFirstObjectByType<Masar.Game.UI.MainMenu>().OnDrive(map);
+                while (SceneManager.GetActiveScene().name != map) yield return null;
+                yield return null;
+                float w = Time.realtimeSinceStartup;
+                while (!Masar.World.CityLodManager.Settled && Time.realtimeSinceStartup - w < 130f) yield return null;
+                for (int i = 0; i < 30; i++) yield return null;   // the loading screen restores time a frame after Settled
+                while (Time.timeScale == 0f && Time.realtimeSinceStartup - w < 135f) yield return null;
+                Debug.Log($"[MASAR smoke] via menu: loading screen done, timeScale {Time.timeScale}");
+            }
+            else
+            {
+                SceneManager.LoadScene(map);
+                yield return null;
+                yield return null;
+            }
             // The city streams its building blocks: measure once the blocks around the car are in
             if (FindFirstObjectByType<Masar.World.CityLodManager>() != null)
             {
@@ -147,7 +185,8 @@ namespace Masar.Game
             if (!string.IsNullOrEmpty(carArg)) tag += "_car-" + carArg;
             string mapArg = Arg("-masarMap");
             if (!string.IsNullOrEmpty(mapArg)) tag += "_map-" + mapArg;
-            var car = FindFirstObjectByType<VehicleController>();
+            var session = FindFirstObjectByType<DriveSession>();
+            var car = session != null && session.vehicle != null ? session.vehicle : FindFirstObjectByType<VehicleController>();
             if (car == null) { Debug.LogError("[MASAR smoke] no vehicle found"); Application.Quit(2); yield break; }
             var driver = new ScriptedDriver();
             yield return new WaitForSeconds(1.5f);
@@ -160,9 +199,12 @@ namespace Masar.Game
             var perf = PerformanceMonitor.Instance;
             float t = 0f, sumFps = 0f, worst = 0f; int n = 0;
             double sumGpu = 0, sumCpu = 0; int nGpu = 0, nCpu = 0;
+            LogCar(car, "start");
+            float nextLog = 0.5f;
             while (t < duration)
             {
                 t += Time.unscaledDeltaTime;
+                if (t >= nextLog) { LogCar(car, $"t={t:F1}"); nextLog += 1f; }
                 if (t > 2f && perf != null)  // skip warm-up
                 {
                     var s = perf.Latest;

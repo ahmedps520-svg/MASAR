@@ -27,6 +27,8 @@ namespace Masar.EditorTools.City
 
         public readonly Dictionary<Vector2Int, Cell> Cells = new Dictionary<Vector2Int, Cell>();
         public readonly List<(Vector3 center, Vector3 size, float yaw)> Colliders = new List<(Vector3, Vector3, float)>();
+        /// <summary>Buildings drawn from their OSM outline (not a rectangle): collision walls follow the outline, height h above the kerb.</summary>
+        public readonly List<(List<Vector2> poly, float h)> Walls = new List<(List<Vector2>, float)>();
         public readonly List<Vector3> Palms = new List<Vector3>();
         /// <summary>Simplified building volumes for the far blocks: center, size, yaw, plaster index.</summary>
         public readonly List<(Vector3 center, Vector3 size, float yaw, Material mat)> Boxes = new List<(Vector3, Vector3, float, Material)>();
@@ -145,6 +147,7 @@ namespace Masar.EditorTools.City
                 float fill = area / Mathf.Max(1f, rw * rd);
                 var batch = new MeshBatch();
                 Material surveyedFar = null;
+                bool outline = false;
                 // Front of the building: the rectangle side nearest a road
                 FrontFacing(rc, rax, rw, rd, out var fax, out float fw, out float fd, out float yaw);
                 var near = _surf.NearestClass(rc);
@@ -181,10 +184,14 @@ namespace Masar.EditorTools.City
                 else
                 {
                     Extrude(batch, poly, levels, _seed++);
+                    outline = true;
                 }
                 Commit(batch, rc);
                 float h = levels * 3.3f + 4.5f;
-                Colliders.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw));
+                // An outline building's bounding rectangle can reach across the street (a 211 x 52 m box stood on
+                // Tahlia Street at the spawn, 2026-11-24): its collision follows the outline instead.
+                if (outline) Walls.Add((poly, h));
+                else Colliders.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw));
                 Boxes.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw, surveyedFar ?? _m.Plaster[(int)(w.Id % _m.Plaster.Length)]));
                 _occ.FillPolygon(poly);
                 MarkRect(rc, rax, rw, rd);
