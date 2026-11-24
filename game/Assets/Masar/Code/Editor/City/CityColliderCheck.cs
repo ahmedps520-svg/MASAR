@@ -25,6 +25,24 @@ namespace Masar.EditorTools.City
             foreach (var c in Physics.OverlapSphere(spawn + Vector3.up * 0.6f, 2.5f))
                 Debug.Log($"[MASAR check] at spawn: {Path(c.transform)} {c.GetType().Name} centre {c.bounds.center} size {(c is BoxCollider b ? b.size : c.bounds.size)} yaw {c.transform.eulerAngles.y:F0}");
 
+            foreach (var arg in System.Environment.GetCommandLineArgs())
+                if (arg.StartsWith("at="))
+                {
+                    var xyz = arg.Substring(3).Split(',');
+                    var q = new Vector3(float.Parse(xyz[0], System.Globalization.CultureInfo.InvariantCulture), 0.8f, float.Parse(xyz[1], System.Globalization.CultureInfo.InvariantCulture));
+                    float best = float.MaxValue; int bl = -1;
+                    for (int l = 0; l < graph.lanes.Length; l++)
+                        for (float s = 0f; s < graph.lanes[l].length; s += 1f)
+                        {
+                            graph.Sample(l, s, out var p, out _);
+                            float d = Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z));
+                            if (d < best) { best = d; bl = l; }
+                        }
+                    Debug.Log($"[MASAR check] at {q}: nearest lane {bl} ({(bl >= 0 && graph.lanes[bl].junction >= 0 ? "junction connector" : "road")}) {best:F1} m away");
+                    foreach (var c in Physics.OverlapSphere(q, 4f))
+                        Debug.Log($"[MASAR check] near {q}: {Path(c.transform)} {c.GetType().Name} centre {c.transform.position} size {(c is BoxCollider bb ? bb.size : c.bounds.size)} yaw {c.transform.eulerAngles.y:F0}");
+                }
+
             // Every lane point (road lanes, not junction connectors), at car height
             var hit = new HashSet<Collider>();
             int samples = 0, blocked = 0;
@@ -48,9 +66,9 @@ namespace Masar.EditorTools.City
             int shown = 0;
             foreach (var c in hit)
             {
-                if (shown++ >= 25) break;
-                var b = (BoxCollider)c;
-                sizes.Append($"\n  centre {c.transform.position} size {b.size} yaw {c.transform.eulerAngles.y:F0}");
+                if (shown++ >= 120) break;
+                var size = c is BoxCollider bx ? bx.size : c.bounds.size;
+                sizes.Append($"\n  {c.name} centre {c.transform.position} size {size} yaw {c.transform.eulerAngles.y:F0}");
             }
             Debug.Log($"[MASAR check] lane samples {samples}, inside a building box {blocked}; boxes on lanes {hit.Count}{sizes}");
         }
