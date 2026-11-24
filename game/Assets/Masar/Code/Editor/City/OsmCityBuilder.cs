@@ -277,7 +277,7 @@ namespace Masar.EditorTools.City
             var palmRoot = new GameObject("Palms").transform; palmRoot.SetParent(world, false);
             int seed = 1;
             foreach (var p in dress.Palms) PalmKit.Place(palmRoot, m, p, seed++);
-            Debug.Log($"[MASAR] Buildings: {dress.Surveyed} surveyed (OSM; {dress.SurveyedKit} with the detailed kit), {dress.Generated} generated ({dress.GeneratedVillas} villas), {dress.Modern} modern; " +
+            Debug.Log($"[MASAR] Buildings: {dress.Surveyed} surveyed (OSM; {dress.SurveyedKit} with the detailed kit, {dress.SurveyedTrimmed} pulled off the road, {dress.SurveyedDropped} left out: a road runs through them), {dress.Generated} generated ({dress.GeneratedVillas} villas), {dress.Modern} modern; " +
                       $"{dress.Lights} street lights, {dress.Palms.Count} palms; cells {dress.Cells.Count}, blocks {blocks.Count}, near {nearTris / 1000}k tris, mid {midTris / 1000}k, far {farTris / 1000}k");
 
             // ---------------- spawn: right lane of Tahlia Street

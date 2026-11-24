@@ -438,18 +438,31 @@ namespace Masar.EditorTools.City
             var accent = batch[_m.Signs[0]];
             for (int i = 0; i < poly.Count; i++)
             {
+                // Hoarding along the site edge, with gaps where a road crosses it
                 Vector2 a = poly[i], b = poly[(i + 1) % poly.Count];
-                float len = (b - a).magnitude;
-                if (len < 1f) continue;
-                hoard.Transform = Matrix4x4.TRS(new Vector3((a.x + b.x) / 2, RoadSurface.KerbHeight, (a.y + b.y) / 2), Quaternion.LookRotation(new Vector3(b.x - a.x, 0, b.y - a.y)), Vector3.one);
-                hoard.Box(new Vector3(-0.05f, 0, -len / 2), new Vector3(0.05f, 2.4f, len / 2), 2f);
-                accent.Transform = hoard.Transform;
-                accent.Box(new Vector3(-0.07f, 2.0f, -len / 2), new Vector3(0.07f, 2.4f, len / 2), 2f);
-                hoard.Transform = accent.Transform = Matrix4x4.identity;
+                float edge = (b - a).magnitude;
+                int k = Mathf.Max(1, Mathf.CeilToInt(edge));
+                int run = -1;
+                for (int j = 0; j <= k; j++)
+                {
+                    bool clear = j < k && _surf.Sample(_surf.R, Vector2.Lerp(a, b, (j + 0.5f) / k)) >= RoadClear;
+                    if (clear && run < 0) run = j;
+                    if (clear || run < 0) continue;
+                    Vector2 p0 = Vector2.Lerp(a, b, run / (float)k), p1 = Vector2.Lerp(a, b, j / (float)k);
+                    run = -1;
+                    float len = (p1 - p0).magnitude;
+                    if (len < 1f) continue;
+                    hoard.Transform = Matrix4x4.TRS(new Vector3((p0.x + p1.x) / 2, RoadSurface.KerbHeight, (p0.y + p1.y) / 2), Quaternion.LookRotation(new Vector3(p1.x - p0.x, 0, p1.y - p0.y)), Vector3.one);
+                    hoard.Box(new Vector3(-0.05f, 0, -len / 2), new Vector3(0.05f, 2.4f, len / 2), 2f);
+                    accent.Transform = hoard.Transform;
+                    accent.Box(new Vector3(-0.07f, 2.0f, -len / 2), new Vector3(0.07f, 2.4f, len / 2), 2f);
+                    hoard.Transform = accent.Transform = Matrix4x4.identity;
+                }
             }
-            // A concrete frame under construction and a tower crane
+            // A concrete frame under construction (fw along ax, fd across) and a tower crane, clear of site roads
             Geometry.MinAreaRect(poly, out var c, out var ax, out float w, out float d);
             float fw = Mathf.Min(w * 0.6f, 40f), fd = Mathf.Min(d * 0.6f, 30f);
+            if (!PullOffRoad(ref c, ax, ref fw, ref fd, 8f)) { Commit(batch, c); return; }
             var xf = Matrix4x4.TRS(new Vector3(c.x, RoadSurface.KerbHeight, c.y), Quaternion.LookRotation(new Vector3(ax.x, 0, ax.y)), Vector3.one);
             var con = batch[_m.Concrete]; con.Transform = xf;
             int floors = 3 + _rnd.Next(4);
@@ -458,14 +471,24 @@ namespace Masar.EditorTools.City
                 for (float z = -fw / 2; z <= fw / 2 + 0.1f; z += 6f)
                     con.Box(new Vector3(x - 0.25f, 0, z - 0.25f), new Vector3(x + 0.25f, floors * 3.4f, z + 0.25f), 1f);
             con.Transform = Matrix4x4.identity;
-            var cr = batch[_lm.Crane]; cr.Transform = xf;
+            float yaw = Mathf.Atan2(ax.x, ax.y) * Mathf.Rad2Deg + 90f;   // collider local X runs along ax
+            // The crane mast stands beside the frame (local +X, or -X when a road is there)
+            var across = new Vector2(ax.y, -ax.x);
             float mastH = floors * 3.4f + 14f, mx = fd / 2 + 4f;
-            cr.Box(new Vector3(mx - 0.8f, 0, -0.8f), new Vector3(mx + 0.8f, mastH, 0.8f), 2f);
-            cr.Box(new Vector3(mx - 0.6f, mastH, -32f), new Vector3(mx + 0.6f, mastH + 1.4f, 12f), 2f);
-            cr.Box(new Vector3(mx - 1.5f, mastH - 2f, 10f), new Vector3(mx + 1.5f, mastH, 13f), 2f);   // counterweight
-            cr.Transform = Matrix4x4.identity;
+            if (!RectClear(c + across * mx, ax, 2f, 2f)) mx = -mx;
+            if (RectClear(c + across * mx, ax, 2f, 2f))
+            {
+                var cr = batch[_lm.Crane]; cr.Transform = xf;
+                cr.Box(new Vector3(mx - 0.8f, 0, -0.8f), new Vector3(mx + 0.8f, mastH, 0.8f), 2f);
+                cr.Box(new Vector3(mx - 0.6f, mastH, -32f), new Vector3(mx + 0.6f, mastH + 1.4f, 12f), 2f);
+                cr.Box(new Vector3(mx - 1.5f, mastH - 2f, 10f), new Vector3(mx + 1.5f, mastH, 13f), 2f);   // counterweight
+                cr.Transform = Matrix4x4.identity;
+                var mp = c + across * mx;
+                Colliders.Add((new Vector3(mp.x, RoadSurface.KerbHeight + mastH * 0.5f, mp.y), new Vector3(1.6f, mastH, 1.6f), yaw));
+            }
             Commit(batch, c);
-            Colliders.Add((new Vector3(c.x, RoadSurface.KerbHeight + floors * 1.7f, c.y), new Vector3(fd, floors * 3.4f, fw), Mathf.Atan2(ax.x, ax.y) * Mathf.Rad2Deg + 90f));
+            // Frame: fw along ax, fd across (the collider used to have them swapped, a strip of invisible wall)
+            Colliders.Add((new Vector3(c.x, RoadSurface.KerbHeight + floors * 1.7f, c.y), new Vector3(fw, floors * 3.4f, fd), yaw));
         }
 
         void Campus(List<Vector2> poly, float area, string kind)
@@ -480,9 +503,10 @@ namespace Masar.EditorTools.City
                 var bp = _map.Points(b);
                 if (bp.Count > 2 && Geometry.Inside(poly, Geometry.Centroid(bp))) { hasBuilding = true; break; }
             }
-            if (!hasBuilding && area > 1500f)
+            float bw = Mathf.Min(w * 0.55f, 70f), bd = Mathf.Min(d * 0.45f, 30f);
+            // Campus roads run through the grounds: the main building steps off them, or is left out
+            if (!hasBuilding && area > 1500f && PullOffRoad(ref c, ax, ref bw, ref bd, 12f))
             {
-                float bw = Mathf.Min(w * 0.55f, 70f), bd = Mathf.Min(d * 0.45f, 30f);
                 var batch = new MeshBatch();
                 float yaw = Mathf.Atan2(ax.x, ax.y) * Mathf.Rad2Deg + 90f;
                 int fl = kind == "hospital" ? 5 + _rnd.Next(4) : 2 + _rnd.Next(2);

@@ -44,7 +44,7 @@ namespace Masar.EditorTools.City
                 }
 
             // Every lane point (road lanes, not junction connectors), at car height
-            var hit = new HashSet<Collider>();
+            var hit = new Dictionary<Collider, int>();
             int samples = 0, blocked = 0;
             var buf = new Collider[16];
             for (int l = 0; l < graph.lanes.Length; l++)
@@ -58,17 +58,20 @@ namespace Masar.EditorTools.City
                     int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 0.8f, 0.5f, buf);
                     bool any = false;
                     for (int k = 0; k < n; k++)
-                        if (buf[k].transform.parent != null && buf[k].transform.parent.name == "BuildingColliders") { hit.Add(buf[k]); any = true; }
+                        if (buf[k].transform.parent != null && buf[k].transform.parent.name == "BuildingColliders") { hit.TryGetValue(buf[k], out int c0); hit[buf[k]] = c0 + 1; any = true; }
                     if (any) blocked++;
                 }
             }
             var sizes = new StringBuilder();
             int shown = 0;
-            foreach (var c in hit)
+            var order = new List<KeyValuePair<Collider, int>>(hit);
+            order.Sort((a, b) => b.Value.CompareTo(a.Value));
+            foreach (var kv in order)
             {
                 if (shown++ >= 120) break;
+                var c = kv.Key;
                 var size = c is BoxCollider bx ? bx.size : c.bounds.size;
-                sizes.Append($"\n  {c.name} centre {c.transform.position} size {size} yaw {c.transform.eulerAngles.y:F0}");
+                sizes.Append($"\n  {c.name} lane samples {kv.Value} centre {c.transform.position} size {size} yaw {c.transform.eulerAngles.y:F0}");
             }
             Debug.Log($"[MASAR check] lane samples {samples}, inside a building box {blocked}; boxes on lanes {hit.Count}{sizes}");
         }

@@ -83,6 +83,10 @@ namespace Masar.EditorTools
                 new View { Name = "17_tahlia_bridge_street", Pos = new Vector3(1560f, 1.7f, 40f), LookAt = new Vector3(1652f, 7f, 72f), Fov = 60f },
                 new View { Name = "18_tahlia_tunnel_portal", Pos = new Vector3(280f, 14f, -250f), LookAt = new Vector3(400f, -5f, -280f), Fov = 58f },
                 new View { Name = "19_kingfahd_tunnel_portal", Pos = new Vector3(1830f, 12f, 330f), LookAt = new Vector3(1880f, -6f, 200f), Fov = 58f },
+                // Spots where OSM buildings reached onto the lanes before they were pulled off the road (KNOWN_ISSUES C13)
+                new View { Name = "20_apartment_row_aerial", Pos = new Vector3(1090f, 45f, 740f), LookAt = new Vector3(1140f, 0f, 776f), Fov = 55f },
+                new View { Name = "21_campus_road_aerial", Pos = new Vector3(-1030f, 50f, -300f), LookAt = new Vector3(-979f, 0f, -250f), Fov = 55f },
+                new View { Name = "22_mosque_street_aerial", Pos = new Vector3(-780f, 45f, -510f), LookAt = new Vector3(-735f, 0f, -462f), Fov = 55f },
             };
             if (city)
             {

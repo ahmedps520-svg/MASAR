@@ -33,7 +33,7 @@ namespace Masar.EditorTools.City
         /// <summary>Simplified building volumes for the far blocks: center, size, yaw, plaster index.</summary>
         public readonly List<(Vector3 center, Vector3 size, float yaw, Material mat)> Boxes = new List<(Vector3, Vector3, float, Material)>();
         public int Modern;
-        public int Surveyed, SurveyedKit, Generated, GeneratedVillas, Lights;
+        public int Surveyed, SurveyedKit, SurveyedTrimmed, SurveyedDropped, Generated, GeneratedVillas, Lights;
 
         readonly OsmMap _map;
         readonly RoadNetwork _net;
@@ -108,6 +108,113 @@ namespace Masar.EditorTools.City
 
         void MarkRect(Vector2 c, Vector2 ax, float w, float d) => _occ.FillRect(c, ax, w + 1f, d + 1f);
 
+        // ------------------------------------------------------------------ keeping buildings off the carriageway
+        // OSM outlines and lots often reach a few metres into the modelled road width; a building there stood
+        // on a lane and stopped the car (58 boxes on lanes, 2026-11-24). R < 0 is the carriageway.
+
+        const float RoadClear = 0.5f;
+
+        bool RectClear(Vector2 c, Vector2 ax, float w, float d, float clear = RoadClear)
+        {
+            Vector2 ay = new Vector2(-ax.y, ax.x);
+            int nu = Mathf.Max(1, Mathf.CeilToInt(w / 1.5f)), nv = Mathf.Max(1, Mathf.CeilToInt(d / 1.5f));
+            for (int i = 0; i <= nu; i++)
+                for (int j = 0; j <= nv; j++)
+                    if (_surf.Sample(_surf.R, c + ax * (w * (i / (float)nu - 0.5f)) + ay * (d * (j / (float)nv - 0.5f))) < clear) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Pulls each side of a rectangle (w along ax, d across) back off the carriageway. False when a road
+        /// runs through it or a side would drop below minSize.
+        /// </summary>
+        bool PullOffRoad(ref Vector2 c, Vector2 ax, ref float w, ref float d, float minSize)
+        {
+            Vector2 ay = new Vector2(-ax.y, ax.x);
+            for (int iter = 0; iter < 4; iter++)
+            {
+                bool moved = false;
+                for (int s = 0; s < 4; s++)
+                {
+                    Vector2 n = s == 0 ? ax : s == 1 ? -ax : s == 2 ? ay : -ay, t = s < 2 ? ay : ax;
+                    float half = s < 2 ? w * 0.5f : d * 0.5f, span = s < 2 ? d : w;
+                    int k = Mathf.Max(1, Mathf.CeilToInt(span));
+                    float worst = float.MaxValue;
+                    for (int i = 0; i <= k; i++) worst = Mathf.Min(worst, _surf.Sample(_surf.R, c + n * half + t * (span * (i / (float)k - 0.5f))));
+                    if (worst >= RoadClear) continue;
+                    float cut = RoadClear - worst + 0.05f;
+                    if (s < 2) w -= cut; else d -= cut;
+                    c -= n * (cut * 0.5f);
+                    moved = true;
+                    if (w < minSize || d < minSize) return false;
+                }
+                if (!moved) return RectClear(c, ax, w, d, RoadClear - 0.1f);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// An outline with points on the carriageway: edges resampled every 2 m and pushed off along the
+        /// road distance gradient. Null when the result is not a simple polygon (a road through it).
+        /// </summary>
+        List<Vector2> PushOffRoad(List<Vector2> poly)
+        {
+            bool any = false;
+            for (int i = 0; i < poly.Count && !any; i++)
+            {
+                Vector2 a = poly[i], b = poly[(i + 1) % poly.Count];
+                int k = Mathf.Max(1, Mathf.CeilToInt((b - a).magnitude));
+                for (int j = 0; j <= k && !any; j++) any = _surf.Sample(_surf.R, Vector2.Lerp(a, b, j / (float)k)) < RoadClear;
+            }
+            if (!any) return poly;
+            var dense = new List<Vector2>();
+            for (int i = 0; i < poly.Count; i++)
+            {
+                Vector2 a = poly[i], b = poly[(i + 1) % poly.Count];
+                int k = Mathf.Max(1, Mathf.CeilToInt((b - a).magnitude / 2f));
+                for (int j = 0; j < k; j++) dense.Add(Vector2.Lerp(a, b, j / (float)k));
+            }
+            for (int i = 0; i < dense.Count; i++)
+                for (int it = 0; it < 3; it++)
+                {
+                    var p = dense[i];
+                    float r = _surf.Sample(_surf.R, p);
+                    if (r >= RoadClear) break;
+                    var g = new Vector2(_surf.Sample(_surf.R, p + Vector2.right * 0.5f) - _surf.Sample(_surf.R, p - Vector2.right * 0.5f),
+                                        _surf.Sample(_surf.R, p + Vector2.up * 0.5f) - _surf.Sample(_surf.R, p - Vector2.up * 0.5f));
+                    if (g.sqrMagnitude < 1e-6f) break;
+                    dense[i] = p + g.normalized * (RoadClear - r + 0.05f);
+                }
+            // Drop near-collinear and near-duplicate points so the roof triangulates cleanly
+            var outp = new List<Vector2>();
+            for (int i = 0; i < dense.Count; i++)
+            {
+                Vector2 prev = outp.Count > 0 ? outp[outp.Count - 1] : dense[dense.Count - 1], p = dense[i], next = dense[(i + 1) % dense.Count];
+                if ((p - prev).sqrMagnitude < 0.25f) continue;
+                Vector2 e0 = (p - prev).normalized, e1 = next - p;
+                if (e1.sqrMagnitude > 1e-4f && Mathf.Abs(e0.x * e1.normalized.y - e0.y * e1.normalized.x) < 0.02f && Vector2.Dot(e0, e1) > 0f) continue;
+                outp.Add(p);
+            }
+            if (outp.Count < 3 || Geometry.SignedArea(outp) < 0.5f * Geometry.SignedArea(poly) || SelfIntersects(outp)) return null;
+            return outp;
+        }
+
+        static bool SelfIntersects(List<Vector2> p)
+        {
+            int n = p.Count;
+            for (int i = 0; i < n; i++)
+                for (int j = i + 2; j < n; j++)
+                {
+                    if (i == 0 && j == n - 1) continue;
+                    Vector2 a = p[i], b = p[(i + 1) % n], c = p[j], d = p[(j + 1) % n];
+                    float d1 = Cross(d - c, a - c), d2 = Cross(d - c, b - c), d3 = Cross(b - a, c - a), d4 = Cross(b - a, d - a);
+                    if (((d1 > 0) != (d2 > 0)) && ((d3 > 0) != (d4 > 0))) return true;
+                }
+            return false;
+        }
+
+        static float Cross(Vector2 u, Vector2 v) => u.x * v.y - u.y * v.x;
+
         // ------------------------------------------------------------------ land use (kept free of fill)
 
         void ReserveLanduse()
@@ -145,19 +252,30 @@ namespace Masar.EditorTools.City
                 bool worship = w.Tag("amenity") == "place_of_worship" || b == "mosque";
                 Geometry.MinAreaRect(poly, out var rc, out var rax, out float rw, out float rd);
                 float fill = area / Mathf.Max(1f, rw * rd);
+                // Rectangles step back off the carriageway; a road through one leaves only the outline path
+                bool rect = fill > 0.8f;
+                if (rect)
+                {
+                    float w0 = rw, d0 = rd;
+                    rect = PullOffRoad(ref rc, rax, ref rw, ref rd, 6f);
+                    if (rect && (rw < w0 - 0.01f || rd < d0 - 0.01f)) SurveyedTrimmed++;
+                    if (!rect) Geometry.MinAreaRect(poly, out rc, out rax, out rw, out rd);
+                }
                 var batch = new MeshBatch();
                 Material surveyedFar = null;
-                bool outline = false;
+                bool outline = false, mosque = false;
                 // Front of the building: the rectangle side nearest a road
                 FrontFacing(rc, rax, rw, rd, out var fax, out float fw, out float fd, out float yaw);
                 var near = _surf.NearestClass(rc);
                 bool major = near >= RoadClass.Tertiary && _surf.Sample(_surf.R, rc) < fd * 0.5f + 10f;
-                if (worship && rw > 14f && rd > 14f && rw < 45f && rd < 45f)
+                // The mosque kit's footprint: a 22 x 24 m hall, its minaret off the +X side (BuildingKit.Mosque)
+                if (worship && rw > 14f && rd > 14f && rw < 45f && rd < 45f && RectClear(rc + fax * 2.5f, fax, 27f, 24f))
                 {
                     BuildingKit.Mosque(batch, _m, new Vector3(rc.x, RoadSurface.KerbHeight, rc.y), yaw);
                     SurveyedKit++;
+                    mosque = true;
                 }
-                else if (fill > 0.8f && fw >= 6f && fd >= 6f && fw <= 90f && fd <= 90f)
+                else if (rect && fw >= 6f && fd >= 6f && fw <= 90f && fd <= 90f)
                 {
                     if ((b == "house" || b == "villa" || b == "detached") && levels <= 2 && fw < 40f)
                         BuildingKit.Villa(batch, _m, new Vector3(rc.x, RoadSurface.KerbHeight, rc.y), yaw, fw, fd, _seed++);
@@ -183,6 +301,16 @@ namespace Masar.EditorTools.City
                 }
                 else
                 {
+                    var off = PushOffRoad(poly);
+                    if (off == null)
+                    {
+                        // A modelled road runs through the outline (OSM has the road and the building overlapping)
+                        _occ.FillPolygon(poly);
+                        SurveyedDropped++;
+                        continue;
+                    }
+                    if (off != poly) SurveyedTrimmed++;
+                    poly = off;
                     Extrude(batch, poly, levels, _seed++);
                     outline = true;
                 }
@@ -191,6 +319,13 @@ namespace Masar.EditorTools.City
                 // An outline building's bounding rectangle can reach across the street (a 211 x 52 m box stood on
                 // Tahlia Street at the spawn, 2026-11-24): its collision follows the outline instead.
                 if (outline) Walls.Add((poly, h));
+                else if (mosque)
+                {
+                    var n = new Vector2(-fax.y, fax.x);
+                    Colliders.Add((new Vector3(rc.x, RoadSurface.KerbHeight + 5f, rc.y), new Vector3(22f, 10f, 24f), yaw));
+                    var m = rc + fax * 14.2f + n * 9f;
+                    Colliders.Add((new Vector3(m.x, RoadSurface.KerbHeight + 18f, m.y), new Vector3(3.6f, 36f, 3.6f), yaw));
+                }
                 else Colliders.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw));
                 Boxes.Add((new Vector3(rc.x, RoadSurface.KerbHeight + h * 0.5f, rc.y), new Vector3(fw, h, fd), yaw, surveyedFar ?? _m.Plaster[(int)(w.Id % _m.Plaster.Length)]));
                 _occ.FillPolygon(poly);
