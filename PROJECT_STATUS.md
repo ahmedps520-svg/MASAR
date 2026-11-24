@@ -1,6 +1,6 @@
 # MASAR: Project Status
 
-**Phase:** Month 2 (approved 2026-11-21) · **Last updated:** 2026-11-23 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
+**Phase:** Month 2 (approved 2026-11-21) · **Last updated:** 2026-11-24 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
 
 ## Summary
 
@@ -33,6 +33,7 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **Wheel bridge on the real G923 (2026-11-21):** the first owner test showed only Cross and Square working (wheel in PlayStation compatibility mode). Bridge rebuilt on DirectInput + G HUB's PC mode: steering read in the background, force feedback measured in both directions (+148° / −265° at 25 %), pedals 0 at rest | `MasarWheelBridge --test-ffb`, `--probe` |
 | **Main menu, intro and logo (2026-11-23):** the owner's logo as app icon, iPad launch screen and intro; menu over a 3D showroom of the selected car; loading screen with real progress | `-masarUiCapture` screens 00–10 |
 | **Bigger city streams (2026-11-23):** 4.4 × 2.6 km map, buildings in 60 block scenes loaded around the camera; build 3.4 GB (was 5.5 GB and crashed on load); about 1.0 GB in memory; High 116 fps in the middle of the map on the PC | PERFORMANCE_REPORT.md |
+| **TestFlight build 21 (2026-11-24):** the streamed bigger city, loading screen, new menu, intro and logo. Processed and available in TestFlight. Signing had hit Apple's certificate limit; each CI run now revokes the certificates it creates (KNOWN_ISSUES T18) | Actions run 45356612623 |
 
 ## In progress (Month 2)
 

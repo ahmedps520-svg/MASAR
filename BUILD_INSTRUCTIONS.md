@@ -248,5 +248,6 @@ In the game: **Main menu → Drive: Tahlia / Al Rawdah**. Settings → City sets
 | No Mac | No Xcode debugger, no Instruments, no local device logs | Unity Profiler over Wi-Fi (development builds), the on-device performance overlay and CSV logs, TestFlight crash reports in App Store Connect |
 | GitHub-hosted runner disk (14 GB documented) | A large Unity export may run out of space | The workflow prints `df -h`. Fallback: Codemagic's free tier (500 macOS minutes a month, about 156 GB disk) |
 | App Store Connect API key needs the Admin role | Required for automatic signing | Keep the key's scope to the MASAR team and revoke it if leaked |
+| Each runner starts with an empty keychain, so automatic signing creates a new certificate on every run, and Apple caps certificates per team | Signing stopped at build 21 with "maximum number of certificates" | The workflow revokes the certificates it created at the end of each run and sweeps any that earlier MASAR runs left behind. It only touches certificates made with an API key while one of its own runs was running, never other apps' or ones made on a Mac. `gh workflow run asc-certs.yml -f revoke=false` lists what it would revoke |
 | TestFlight builds expire after 90 days | Old builds stop launching | Upload regularly |
 | Build processing on Apple's side | 5–30 minutes before the iPad can install | — |
