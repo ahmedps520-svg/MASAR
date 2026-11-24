@@ -1,0 +1,45 @@
+name: Apple certificates - clean up MASAR CI ones
+
+# Lists (and with revoke=true, revokes) the signing certificates that this repository's past
+# "MASAR game → TestFlight" runs created. Only certificates issued while one of those runs was
+# running AND made with an API key are touched; everything else in the team is kept.
+# ios-game.yml does the same sweep on every run; this workflow is for checking by hand.
+
+on:
+  workflow_dispatch:
+    inputs:
+      revoke:
+        description: "Revoke them (false = only list what would be revoked)"
+        type: boolean
+        default: false
+
+jobs:
+  certs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install API key and tools
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+          pip install --quiet pyjwt cryptography
+
+      - name: Certificates made by MASAR runs
+        run: |
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow ios-game.yml --limit 500 \
+            --json databaseId,createdAt,updatedAt \
+            --jq '[.[] | {id: .databaseId, start: .createdAt, end: .updatedAt}]' > "$RUNNER_TEMP/windows.json"
+          python tools/ci/asc_certs.py old "$RUNNER_TEMP/windows.json" ${{ inputs.revoke && '--revoke' || '' }}
+
+      - name: Remove API key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

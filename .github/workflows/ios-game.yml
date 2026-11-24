@@ -78,6 +78,19 @@ jobs:
           mkdir -p "$RUNNER_TEMP/keys"
           printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
           echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet pyjwt cryptography
+
+      # Each run's keychain is empty, so Xcode creates new signing certificates every time and
+      # Apple caps how many a team may have. Revoke what past MASAR runs left behind (only
+      # certificates issued during one of this workflow's runs and made with an API key), then
+      # note what exists now so the last step can revoke exactly what this run creates.
+      - name: Signing certificates - clear old MASAR CI ones
+        continue-on-error: true
+        run: |
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow ios-game.yml --limit 500             --json databaseId,createdAt,updatedAt             --jq '[.[] | {id: .databaseId, start: .createdAt, end: .updatedAt}]' > "$RUNNER_TEMP/windows.json"
+          "$RUNNER_TEMP/venv/bin/python" tools/ci/asc_certs.py old "$RUNNER_TEMP/windows.json" --revoke
+          "$RUNNER_TEMP/venv/bin/python" tools/ci/asc_certs.py snapshot "$RUNNER_TEMP/certs-before.json"
 
       - name: Archive (automatic signing via API key)
         working-directory: ${{ runner.temp }}/xcode
@@ -128,14 +141,20 @@ jobs:
           TESTER_EMAIL: ${{ secrets.TESTER_EMAIL }}
           BUNDLE_ID: app.masar.game
         run: |
-          python3 -m venv "$RUNNER_TEMP/venv"
-          source "$RUNNER_TEMP/venv/bin/activate"
-          pip install --quiet pyjwt cryptography
-          python "$GITHUB_WORKSPACE/tools/ci/testflight_invite.py"
+          "$RUNNER_TEMP/venv/bin/python" "$GITHUB_WORKSPACE/tools/ci/testflight_invite.py"
 
       - name: Disk space after
         if: always()
         run: df -h /
+
+      # The certificates this run created live only in this runner's keychain, which is
+      # deleted with the runner. Builds already uploaded to TestFlight are not affected.
+      - name: Signing certificates - revoke this run's
+        if: always()
+        continue-on-error: true
+        run: |
+          [ -f "$RUNNER_TEMP/certs-before.json" ] || { echo "No snapshot, nothing to do."; exit 0; }
+          "$RUNNER_TEMP/venv/bin/python" tools/ci/asc_certs.py own "$RUNNER_TEMP/certs-before.json" --revoke
 
       - name: Remove API key and decrypted project
         if: always()
