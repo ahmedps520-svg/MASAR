@@ -113,7 +113,8 @@ def main(argv):
                 show(c, f"issued during run {run} but not made with an API key: kept")
             else:
                 others += 1
-        print(f"{others} certificates were not issued during a MASAR run: kept, not listed.")
+                show(c, "not issued during a MASAR run: kept")
+        print(f"{others} certificates were not issued during a MASAR run: kept.")
         return revoke(chosen, really)
     raise SystemExit(f"unknown mode {mode}")
 
