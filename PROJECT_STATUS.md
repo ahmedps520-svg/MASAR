@@ -36,7 +36,7 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **TestFlight build 21 (2026-11-24):** the streamed bigger city, loading screen, new menu, intro and logo. Processed and available in TestFlight. Signing had hit Apple's certificate limit; each CI run now revokes the certificates it creates (KNOWN_ISSUES T18) | Actions run 45356612623 |
 | **TestFlight build 27 (2026-11-24):** fixes the car stuck at the city spawn (an invisible 211 m building collision box on Tahlia Street; outline buildings now collide along their outline, KNOWN_ISSUES C13). On the PC three of the five cars were tested and drive off from the spawn | Actions run 45432443677 |
 | **Buildings kept off the roads (2026-11-24):** 58 visible buildings stood on lanes (OSM outlines inside our road width, campus buildings, construction frames); they now step back from the carriageway (KNOWN_ISSUES C13). Lane samples inside a building: 278 → 1. All five cars drive off the city spawn on the PC. Shipped as TestFlight build 30 | Actions run 45478882095 |
-| **Month 3 (2026-11-26):** lane autopilot + Benchmark drive (pause menu), synthesised engine/tyre/wind sound, day/sunset/night, static friction and idle fixes, AI lane changes with indicators. PC: 16/16 tests, 3-minute autopilot drive at 60 fps with 0 collisions | ROADMAP Month 3, PERFORMANCE_REPORT |
+| **Month 3 (2026-11-26):** lane autopilot + Benchmark drive (pause menu), synthesised engine/tyre/wind sound, day/sunset/night, static friction and idle fixes, AI lane changes with indicators. PC: 16/16 tests, 3-minute autopilot drive at 60 fps with 0 collisions. Shipped as TestFlight build 32 | Actions run 45735678881 |
 
 ## In progress (Month 3)
 

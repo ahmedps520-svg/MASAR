@@ -61,7 +61,7 @@ The original Month 3 (OSM road tool, road meshes, first real neighbourhood, cell
 | M3-3 | **Time of day: day, sunset, night.** Sun angle, colour and sky exposure per setting. At night: street lamps light the road near the car, the player's headlights (low and high beam), traffic head- and tail-lights, lit windows | 🟡 Built, without lit windows (needs a city rebuild); PC 60 fps on High in all three; shots in `build/screenshots/m3` | Review shots of the same spots in all three; PC frame cost measured; Night playable on High |
 | M3-4 | **Physics fixes T3 and T8.** Real static friction when stopped (no creeping on slopes while braking), idle holds 750 rpm | ✅ 0.00 cm on a 10 % slope; idle 750 rpm | New EditMode tests: a braked car on a 10 % slope moves < 1 cm in 10 s; idle settles within ±25 rpm |
 | M3-5 | **AI traffic lane changes (MOBIL) with indicators.** Cars move to a faster or freer lane when it is safe, and leave a lane blocked by a stopped car; the indicator blinks before the move | 🟡 2–4 lane changes per PC run; 1 AI–AI overlap in 4 runs (to find); no indicator review shot yet | Counted lane changes in a PC run, no AI-AI collisions, review shot of a car changing lanes with its indicator on |
-| M3-6 | **TestFlight build and docs** | ⬜ | Shipped, ROADMAP / PROJECT_STATUS / KNOWN_ISSUES / PERFORMANCE_REPORT updated |
+| M3-6 | **TestFlight build and docs** | ✅ TestFlight build 32 (2026-11-26) | Shipped, ROADMAP / PROJECT_STATUS / KNOWN_ISSUES / PERFORMANCE_REPORT updated |
 
 Not in Month 3, and why:
 - **Arabic text and right-to-left UI.** Needs a font that has Arabic (for example Noto Sans Arabic, SIL Open Font License). That is a download, so it waits for the owner's OK.
