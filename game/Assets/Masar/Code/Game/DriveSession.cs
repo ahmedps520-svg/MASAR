@@ -28,6 +28,10 @@ namespace Masar.Game
         private GameObject _pause;
         private GameObject _subPanel;
         private bool _paused;
+        private DriveBenchmark _bench;
+        private Text _benchStatus;
+        private GameObject _benchResult;
+        private TimeOfDay _timeOfDay;
         private readonly List<Renderer> _renderers = new List<Renderer>();
 
         /// <summary>
@@ -82,6 +86,8 @@ namespace Masar.Game
             router.VehicleSteeringLockDeg = v.Definition.steering.steeringWheelLockDegrees;
             Masar.World.Traffic.TrafficSystem.Player = v.GetComponent<Rigidbody>();
             cameraRig.SetTarget(v);
+            ApplyAudio(SettingsStore.Current);
+            if (_timeOfDay) _timeOfDay.Apply(_timeOfDay.Current, v);
             if (_hud) _hud.vehicle = v;
             GetComponentsInScene(_renderers);
             Debug.Log($"[MASAR] Switched car: {entry.displayName} ({entry.id})");
@@ -102,6 +108,9 @@ namespace Masar.Game
             router.VehicleSteeringLockDeg = vehicle.Definition.steering.steeringWheelLockDegrees;
             Masar.World.Traffic.TrafficSystem.Player = vehicle.GetComponent<Rigidbody>();
             ApplyPopulation(s);
+            ApplyAudio(s);
+            _timeOfDay = gameObject.AddComponent<TimeOfDay>();
+            ApplyTimeOfDay(s, true);
             var ffb = gameObject.AddComponent<WheelForceFeedback>();
             ffb.Vehicle = () => vehicle;
             ffb.Paused = () => _paused;
@@ -117,6 +126,7 @@ namespace Masar.Game
             {
                 s.cameraMode = m;
                 SettingsStore.Save();
+                ApplyAudio(s);
                 if (_hud) _hud.ShowCameraName(CameraName(m));
             };
 
@@ -159,9 +169,31 @@ namespace Masar.Game
                 GameServices.Instance.Input.FreeCameraCapture = false;
             }
             Time.timeScale = 1f;
+            AudioListener.pause = false;
         }
 
-        private void OnSettingsChanged(MasarSettings s) { RefreshTouchControls(); ApplyPopulation(s); }
+        private void OnSettingsChanged(MasarSettings s) { RefreshTouchControls(); ApplyPopulation(s); ApplyAudio(s); ApplyTimeOfDay(s, false); }
+
+        /// <summary>Day, sunset or night from the settings ("-masarTimeOfDay 0|1|2" overrides, for QA).</summary>
+        private void ApplyTimeOfDay(MasarSettings s, bool force)
+        {
+            if (_timeOfDay == null) return;
+            var args = System.Environment.GetCommandLineArgs();
+            int ai = System.Array.IndexOf(args, "-masarTimeOfDay");
+            int mode = ai >= 0 && ai + 1 < args.Length && int.TryParse(args[ai + 1], out var m) ? m : s.timeOfDay;
+            var want = (TimeOfDay.Mode)Mathf.Clamp(mode, 0, 2);
+            if (force || want != _timeOfDay.Current) _timeOfDay.Apply(want, vehicle);
+        }
+
+        /// <summary>The car's synthesised sound: volume from the settings, muffled in the cockpit cameras.</summary>
+        private void ApplyAudio(MasarSettings s)
+        {
+            if (vehicle == null) return;
+            var a = VehicleAudio.Ensure(vehicle);
+            a.Volume = s.soundVolume;
+            var mode = cameraRig != null ? cameraRig.mode : s.cameraMode;
+            a.Interior = mode == CameraMode.Cockpit || mode == CameraMode.Passenger;
+        }
 
         /// <summary>QA only: show the touch controls even without a touchscreen (UI capture on desktop).</summary>
         public void ForceTouchControls(bool on)
@@ -184,19 +216,81 @@ namespace Masar.Game
         {
             var router = GameServices.Instance.Input;
             if (router.Actions.Pause) SetPaused(!_paused);
+            if (_bench != null && _bench.Running && _benchStatus != null)
+            {
+                int left = Mathf.Max(0, Mathf.CeilToInt(_bench.Seconds - _bench.Elapsed));
+                _benchStatus.text = $"Benchmark drive · {left / 60}:{left % 60:00} left · {_bench.Autopilot.State} · pause to stop";
+            }
+        }
+
+        // ------------------------------------------------------------------ benchmark drive
+
+        /// <summary>Drives a fixed time from the map's start on the lane autopilot and measures it (M3-1).</summary>
+        private void StartBenchmark()
+        {
+            SetPaused(false);
+            if (spawnPoint) vehicle.Teleport(spawnPoint.position, spawnPoint.rotation);
+            if (_bench == null) _bench = gameObject.AddComponent<DriveBenchmark>();
+            _bench.Seconds = 180f;
+            _bench.Finished -= OnBenchmarkFinished;
+            _bench.Finished += OnBenchmarkFinished;
+            if (!_bench.Begin(vehicle, SceneManager.GetActiveScene().name)) { ShowBenchmarkResult(); return; }
+            if (_benchStatus == null)
+            {
+                _benchStatus = UIKit.Label(_canvas.transform, "", 24, UIKit.Warn, TextAnchor.UpperCenter, FontStyle.Bold);
+                UIKit.Anchor(_benchStatus.rectTransform, new Vector2(0.2f, 0.9f), new Vector2(0.8f, 0.97f), Vector2.zero, Vector2.zero);
+                _benchStatus.raycastTarget = false;
+            }
+            _benchStatus.gameObject.SetActive(true);
+        }
+
+        private void OnBenchmarkFinished(DriveBenchmark b)
+        {
+            if (_benchStatus) _benchStatus.gameObject.SetActive(false);
+            ShowBenchmarkResult();
+        }
+
+        private void ShowBenchmarkResult()
+        {
+            if (_benchResult) Destroy(_benchResult);
+            var (root, box) = UIKit.Modal(_canvas.transform, "BenchmarkResult", new Vector2(0.28f, 0.14f), new Vector2(0.72f, 0.86f));
+            _benchResult = root.gameObject;
+            var col = UIKit.Rect(box.transform, "Column");
+            UIKit.Anchor(col, Vector2.zero, Vector2.one, new Vector2(36, 30), new Vector2(-36, -30));
+            UIKit.VStack(col, 10, new RectOffset(0, 0, 0, 0), false);
+            UIKit.Size(UIKit.Label(col, "Benchmark drive", 40, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold), 60);
+            var d = DriveBenchmark.Parse(_bench != null ? _bench.Report : null);
+            string V(string k) => d.TryGetValue(k, out var v) ? v : "–";
+            string body = d.Count == 0
+                ? (_bench != null ? _bench.Report : "No result")
+                : $"Average {V("avgFps")} fps · median frame {V("frameMsMedian")} ms\n" +
+                  $"1 % worst {V("frameMs99")} ms · 0.1 % worst {V("frameMs999")} ms · worst {V("frameMsWorst")} ms\n" +
+                  $"Frames over 50 ms: {V("framesOver50ms")} · over 33 ms: {V("framesOver33ms")}\n" +
+                  $"Memory peak {V("peakFootprintMB")} MB · thermal peak {V("peakThermal")}\n" +
+                  $"{V("distanceKm")} km at {V("avgSpeedKmh")} km/h average · collisions {V("collisions")}\n" +
+                  $"Graphics {V("quality")} · {V("resolution")} · completed: {V("completed")}";
+            UIKit.Size(UIKit.Label(col, body, 26, UIKit.Text, TextAnchor.UpperLeft), 330);
+            string where = _bench != null && !string.IsNullOrEmpty(_bench.ReportPath)
+                ? "Saved: Files app > MASAR > benchmarks > " + System.IO.Path.GetFileName(_bench.ReportPath)
+                : "";
+            UIKit.Size(UIKit.Label(col, where, 20, UIKit.TextDim, TextAnchor.UpperLeft), 60);
+            UIKit.Size(UIKit.Button(col, "OK", () => { Destroy(_benchResult); _benchResult = null; }, 30, UIKit.Accent), 80);
         }
 
         // ------------------------------------------------------------------ pause menu
 
         public void SetPaused(bool paused)
         {
+            bool stopBench = paused && _bench != null && _bench.Running;
             _paused = paused;
             Time.timeScale = paused ? 0f : 1f;
+            AudioListener.pause = paused;
             GameServices.Instance.Input.MenuOpen = paused;
             if (_subPanel) { Destroy(_subPanel); _subPanel = null; }
             if (paused) BuildPauseMenu();
             else if (_pause) { Destroy(_pause); _pause = null; }
             RefreshTouchControls();
+            if (stopBench) _bench.Stop(false);   // the result shows over the pause menu
         }
 
         private void BuildPauseMenu()
@@ -217,6 +311,8 @@ namespace Masar.Game
             UIKit.Size(UIKit.Button(col, $"Settings (camera: {CameraName(cameraRig.mode)})", OpenSettings, 28), 76);
             UIKit.Size(UIKit.Button(col, "Input devices & wheel test", OpenDevices, 28), 76);
             DiagnosticsButton.Create(col, "pause-menu", 76f);
+            if (Masar.Game.LaneAutopilot.FindGraph() != null)
+                UIKit.Size(UIKit.Button(col, "Benchmark drive (3 min, drives itself)", StartBenchmark, 28), 76);
             UIKit.Size(UIKit.Button(col, "Reset vehicle to start", () =>
             {
                 if (spawnPoint) vehicle.Teleport(spawnPoint.position, spawnPoint.rotation); else vehicle.ResetUpright();

@@ -124,6 +124,19 @@ What this proves and what it doesn't:
 | GPU Resident Drawer | Enabled Medium+ | Not yet verified as active (draw-call counts don't show instancing gains, because every building mesh is unique) |
 | Mipmap streaming budgets per tier | Configured | Not yet measured |
 
+#### Benchmark drive on the lane autopilot (2026-11-26, `-masarSmokeTest -masarViaMenu -masarAutopilot`, High, 1600×1100, 60 fps cap)
+
+The car drives itself through Tahlia (up to 80 km/h, stops at red lights) while every frame is timed. Same route each run.
+
+| Run | Seconds | Avg fps | Median / 99 % / 99.9 % frame | Worst | Frames > 50 ms | Distance, avg / max speed | Collisions | Max lane error | AI lane changes / overlaps |
+|---|---|---|---|---|---|---|---|---|---|
+| Day, test sedan | 177 | 59.9 | 16.67 / 16.67 / 17.06 ms | 145 ms | 1 | 1.86 km, 37 / 78 km/h | 0 | 1.90 m (no seconds off lane) | 4 / 0 |
+| Night, test sedan (first lighting) | 117 | 59.8 | 16.67 / 16.96 / 22.08 ms | 70 ms | 4 | 1.27 km, 38 / 78 km/h | 0 | 1.90 m | 4 / 0 |
+| Sunset, test sedan | 57 | 60.0 | 16.67 / 16.86 / 20.27 ms | 24 ms | 0 | 0.53 km, 32 / 78 km/h | 0 | 0.19 m | 2 / 0 |
+| Day, Aventador SVJ | 57 | 59.9 | 16.67 / 17.35 / 18.84 ms | 66 ms | 1 | 0.74 km, 44 / 80 km/h | 0 | 0.15 m | 4 / 1 |
+
+On the PC the streamed city holds the 60 fps cap with at most a handful of frames over 50 ms in 3 minutes (block loads). The iPad numbers come from the same drive: **pause menu > Benchmark drive** (the report is saved in Files > MASAR > benchmarks).
+
 ### iPad Pro M5
 
 | Date | Build | Tier | Scene | FPS avg / 1% | CPU main | GPU | Footprint / available | Thermal after 10 min | Notes |
@@ -136,14 +149,19 @@ What this proves and what it doesn't:
 
 ### EditMode: isolated vehicle model (straight-line harness, flat dry road)
 
-Unity 6000.3.28f1, run 2026-11-14 on the development PC. **6/6 passed.**
+Unity 6000.3.28f1, first run 2026-11-14 on the development PC. **Run 2026-11-26: 16/16 passed** (the Month 3 tests below added).
 
 | Test | Result | Reference range |
 |---|---|---|
 | 0–100 km/h (test sedan, full throttle, automatic) | **9.47 s** | 6.5–13 s (class reference about 8–10 s) |
 | Speed after 40 s at full throttle | 204 km/h, 5th gear, 5,697 rpm | — |
 | 100–0 km/h braking, ABS | **39.0 m in 2.83 s** | 30–55 m (class reference about 35–45 m) |
-| Idle in Park, 10 s | 693 rpm, no motion | idle ±200 rpm. Target idle is 750; the governor settles slightly low (tuning item) |
+| Idle in Park, 10 s | **750 rpm** (693 before 2026-11-26), no motion | idle ±25 rpm since the governor got an integral term (T8) |
+| Braked (50 %) on a 10 % slope, uphill and downhill, 10 s | **0.00 cm** moved | < 1 cm (static friction at standstill, T3) |
+| Brake released on a 10 % slope, 3 s | rolled back 3.77 m | must roll (static friction lets go) |
+| Engine sound pitch, 4 cyl at 3,000 / 6,000 rpm, 12 cyl at 1,200 / 3,000 rpm | 100.0 / 200.0 / 120.0 / 300.0 Hz | firing frequency rpm × cylinders / 120, ±5 % |
+| Tyre sound while gripping / sliding | rms 0.00000 / 0.066 | silent while gripping |
+| Sound output at redline, full load, sliding, 80 m/s | peak 0.35, no NaN | within ±1 |
 | Coasting stability at 45 m/s, 5 s | wheel slip < 1 m/s throughout | — |
 | Tire force never exceeds μ·Fz (full slip sweep) | pass | — |
 

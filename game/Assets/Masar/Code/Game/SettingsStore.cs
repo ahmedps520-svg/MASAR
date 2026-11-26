@@ -22,6 +22,8 @@ namespace Masar.Game
         public string selectedMap = "Tahlia";         // drive scene: "Tahlia" (real map, OSM) or "TestBlock"
         public int trafficDensity = 2;                // 0 off, 1 light, 2 normal, 3 heavy
         public int pedestrianDensity = 2;             // 0 off, 1 few, 2 normal, 3 busy
+        public float soundVolume = 0.8f;              // 0..1, the car's synthesised sound
+        public int timeOfDay = 0;                     // 0 day, 1 sunset, 2 night (city and test block)
         public CameraModeSettings[] cameras;
         public InputCalibration keyboard = new InputCalibration();
         public InputCalibration gamepad = new InputCalibration { steerDeadzone = 0.08f, steerExponent = 1.4f };

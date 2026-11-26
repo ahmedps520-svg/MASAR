@@ -25,6 +25,7 @@ namespace Masar.Vehicles
         public TransmissionKind Mode { get; set; }
         public Masar.Core.GearSelector Selector { get; private set; } = Masar.Core.GearSelector.Drive;
         public float AppliedThrottle { get; private set; }
+        private float _idleTrim;
 
         private float _shiftTimer;
         private int _pendingGear;
@@ -155,9 +156,15 @@ namespace Masar.Vehicles
             // --- engine torque
             float rpm = EngineOmega * RadPerSecToRpm;
             float thr = EngineRunning ? throttle : 0f;
-            // Idle governor: hold idle by opening the throttle a little
-            if (EngineRunning && rpm < e.idleRpm)
-                thr = Mathf.Max(thr, Mathf.Clamp01((e.idleRpm - rpm) / 250f) * 0.35f);
+            // Idle governor: hold idle by opening the throttle a little. Proportional + integral, so
+            // it settles on the idle speed instead of drooping below it (KNOWN_ISSUES T8). The
+            // integral only works near idle and only learns while the driver is off the throttle.
+            if (EngineRunning && rpm < e.idleRpm + 300f)
+            {
+                if (throttle < 0.05f) _idleTrim = Mathf.Clamp(_idleTrim + (e.idleRpm - rpm) * 0.0008f * dt, 0f, 0.3f);
+                float p = Mathf.Clamp01((e.idleRpm - rpm) / 250f) * 0.35f;
+                thr = Mathf.Max(thr, Mathf.Clamp01(p + _idleTrim * Mathf.InverseLerp(e.idleRpm + 300f, e.idleRpm, rpm)));
+            }
             // Rev limiter: hard fuel cut
             if (rpm > e.revLimiterRpm) thr = 0f;
             AppliedThrottle = thr;

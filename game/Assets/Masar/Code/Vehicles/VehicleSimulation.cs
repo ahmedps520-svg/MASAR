@@ -178,6 +178,43 @@ namespace Masar.Vehicles
             var br = Def.brakes;
             _absActive = false;
 
+            // Static friction at (near) standstill. The slip model gives a force that grows with
+            // slip speed, so on a slope a braked car would creep slowly downhill. Below 0.35 m/s a
+            // contact that is held (wheel locked by the brakes, or no sideways motion) is instead
+            // pinned by a stiff spring-damper anchored where it stopped, up to the friction limit.
+            // Above the limit it lets go and the slip model takes over again.
+            for (int i = 0; i < 4; i++)
+            {
+                var ct = contacts[i];
+                _stickX[i] = _stickY[i] = false;
+                if (!ct.Grounded || load[i] < 1f || Mathf.Abs(ct.Vx) > StickSpeed || Mathf.Abs(ct.Vy) > StickSpeed)
+                {
+                    _anchorX[i] = _anchorY[i] = 0f;
+                    continue;
+                }
+                float brakeT = c.Brake * (i < 2 ? br.frontTorque : br.rearTorque) + (i >= 2 ? c.Handbrake * br.handbrakeTorque : 0f);
+                bool held = Wheels[i].Omega == 0f && brakeT > 50f;
+                float limit = TireModel.EffectiveFriction(Tire(i), load[i], ct.SurfaceGrip) * load[i];
+                float k = load[i] * StickStiffness, d = load[i] * StickDamping;
+                if (held)
+                {
+                    _anchorX[i] += ct.Vx * dt;
+                    float f = -(k * _anchorX[i] + d * ct.Vx);
+                    // The brake can only hold the wheel up to its torque
+                    float cap = Mathf.Min(limit, brakeT / Tire(i).radius);
+                    if (Mathf.Abs(f) <= cap) { _fStickX[i] = f; _stickX[i] = true; }
+                    else _anchorX[i] = 0f;
+                }
+                else _anchorX[i] = 0f;
+                if (Mathf.Abs(ct.Vx) < StickSpeed)
+                {
+                    _anchorY[i] += ct.Vy * dt;
+                    float f = -(k * _anchorY[i] + d * ct.Vy);
+                    if (Mathf.Abs(f) <= limit) { _fStickY[i] = f; _stickY[i] = true; }
+                    else _anchorY[i] = 0f;
+                }
+            }
+
             for (int step = 0; step < substeps; step++)
             {
                 for (int i = 0; i < 4; i++) _omega[i] = Wheels[i].Omega;
@@ -193,6 +230,8 @@ namespace Masar.Vehicles
                     if (ct.Grounded && load[i] > 1f)
                     {
                         TireModel.ComputeForces(tire, load[i], ct.SurfaceGrip, _slipRatio[i], _tanSlip[i], out fx, out fy, out _);
+                        if (_stickX[i]) fx = _fStickX[i];
+                        if (_stickY[i]) fy = _fStickY[i];
                     }
 
                     // Brakes (with a simple ABS release when the wheel is locking).
@@ -275,9 +314,18 @@ namespace Masar.Vehicles
                 Wheels[i].Omega = 0f;
                 _slipRatio[i] = 0f;
                 _tanSlip[i] = 0f;
+                _anchorX[i] = _anchorY[i] = 0f;
             }
         }
 
         private readonly float[] _load = new float[4];
+
+        // Static friction state (see Step)
+        private const float StickSpeed = 0.35f;        // m/s
+        private const float StickStiffness = 30f;      // N per m of creep, per N of load
+        private const float StickDamping = 3f;         // N per m/s, per N of load
+        private readonly float[] _anchorX = new float[4], _anchorY = new float[4];
+        private readonly float[] _fStickX = new float[4], _fStickY = new float[4];
+        private readonly bool[] _stickX = new bool[4], _stickY = new bool[4];
     }
 }

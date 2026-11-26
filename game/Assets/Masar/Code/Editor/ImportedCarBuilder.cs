@@ -123,6 +123,8 @@ namespace Masar.EditorTools
             d.engine.torqueCurveRpm = rpm;
             d.engine.torqueCurveNm = nm;
             d.engine.idleRpm = 780f;
+            d.engine.cylinders = 4;
+            d.engine.turbo = true;   // both sedans are 2.0 turbo
             d.engine.redlineRpm = redline;
             d.engine.revLimiterRpm = redline + 200f;
             d.transmission.forwardRatios = ratios;
@@ -149,6 +151,8 @@ namespace Masar.EditorTools
             for (int i = 0; i < nm.Length; i++) nm[i] *= torqueScale;
             d.engine.torqueCurveNm = nm;
             d.engine.idleRpm = 950f;
+            d.engine.cylinders = 12;
+            d.engine.turbo = torqueScale > 1.2f;   // the Mansory is twin-turbo, the SVJ naturally aspirated
             d.engine.redlineRpm = 8500f;
             d.engine.revLimiterRpm = 8700f;
             d.engine.inertia = 0.24f;

@@ -1,6 +1,6 @@
 # MASAR: Project Status
 
-**Phase:** Month 2 (approved 2026-11-21) · **Last updated:** 2026-11-24 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
+**Phase:** Month 3 (planned and started 2026-11-26) · **Last updated:** 2026-11-26 · **Gate 0:** the iPad runs it (TestFlight); device performance numbers still to capture
 
 ## Summary
 
@@ -36,8 +36,15 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 | **TestFlight build 21 (2026-11-24):** the streamed bigger city, loading screen, new menu, intro and logo. Processed and available in TestFlight. Signing had hit Apple's certificate limit; each CI run now revokes the certificates it creates (KNOWN_ISSUES T18) | Actions run 45356612623 |
 | **TestFlight build 27 (2026-11-24):** fixes the car stuck at the city spawn (an invisible 211 m building collision box on Tahlia Street; outline buildings now collide along their outline, KNOWN_ISSUES C13). On the PC three of the five cars were tested and drive off from the spawn | Actions run 45432443677 |
 | **Buildings kept off the roads (2026-11-24):** 58 visible buildings stood on lanes (OSM outlines inside our road width, campus buildings, construction frames); they now step back from the carriageway (KNOWN_ISSUES C13). Lane samples inside a building: 278 → 1. All five cars drive off the city spawn on the PC. Shipped as TestFlight build 30 | Actions run 45478882095 |
+| **Month 3 (2026-11-26):** lane autopilot + Benchmark drive (pause menu), synthesised engine/tyre/wind sound, day/sunset/night, static friction and idle fixes, AI lane changes with indicators. PC: 16/16 tests, 3-minute autopilot drive at 60 fps with 0 collisions | ROADMAP Month 3, PERFORMANCE_REPORT |
 
-## In progress (Month 2)
+## In progress (Month 3)
+
+- **Benchmark drive on the iPad:** the owner runs it once (pause menu, city map); the numbers go into PERFORMANCE_REPORT.md and close the open Gate 0 measurement.
+- Listen to the engine sound and look at sunset and night on the iPad.
+- One AI–AI overlap was counted in four PC runs: find the cause.
+
+## Earlier (Month 2)
 
 - **Tahlia / Al Rawdah map** from OpenStreetMap, with AI traffic and pedestrians (placeholder bodies): built and compiled, under review (screenshots, PC perf run, then TestFlight).
 - **Max graphics tier** (above Ultra): to be measured on the iPad in the city.
@@ -52,4 +59,4 @@ The Unity 6.3 LTS skeleton **compiles, passes its physics tests, and drives in t
 
 1. Secrets → TestFlight the probe → G923 result on the iPad.
 2. TestFlight the game → performance numbers on the device (overlay + CSV) → Gate 0 review.
-3. Month 2 planning, after approval.
+3. Month 3: device benchmark numbers, owner review of sound and night, then Month 4 (weather, driver profiles, rules research). Arabic UI waits for the owner's OK to download an Arabic font.

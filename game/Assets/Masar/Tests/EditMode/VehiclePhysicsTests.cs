@@ -23,6 +23,7 @@ namespace Masar.Tests
             public readonly VehicleSimulation Sim;
             public float V;          // m/s
             public float X;          // m
+            public float Grade;      // rise over run, + = the car faces uphill
             private readonly WheelContact[] _c = new WheelContact[4];
             private readonly WheelOutput[] _o = new WheelOutput[4];
 
@@ -57,7 +58,8 @@ namespace Masar.Tests
                 float fx = 0f;
                 for (int i = 0; i < 4; i++) fx += _o[i].Fx;
                 float drag = 0.5f * 1.2f * b.dragCoefficient * b.frontalArea * V * Mathf.Abs(V);
-                V += (fx - drag) / b.massKg * Dt;
+                float slope = 9.81f * b.massKg * Mathf.Sin(Mathf.Atan(Grade));
+                V += (fx - drag - slope) / b.massKg * Dt;
                 X += V * Dt;
             }
         }
@@ -95,6 +97,45 @@ namespace Masar.Tests
             Assert.That(float.IsNaN(rpm), Is.False);
             Assert.That(rpm, Is.InRange(h.Def.engine.idleRpm - 200f, h.Def.engine.idleRpm + 250f));
             Assert.That(Mathf.Abs(h.V), Is.LessThan(0.05f), "car must not move in Park");
+        }
+
+        [Test]
+        public void Engine_Idle_SettlesOnTarget()
+        {
+            var h = new Harness();
+            var ctl = new DriverControls();
+            for (int i = 0; i < 120 * 10; i++) h.Step(ctl);
+            float rpm = h.Sim.Drivetrain.EngineRpm;
+            Debug.Log($"[MASAR test] idle rpm after 10 s: {rpm:F0} (target {h.Def.engine.idleRpm:F0})");
+            Assert.That(rpm, Is.InRange(h.Def.engine.idleRpm - 25f, h.Def.engine.idleRpm + 25f));
+        }
+
+        [TestCase(0.10f)]
+        [TestCase(-0.10f)]
+        public void Braked_OnSlope_DoesNotCreep(float grade)
+        {
+            var h = new Harness { Grade = grade };
+            h.Sim.Drivetrain.SetSelector(GearSelector.Neutral, 0f);
+            var ctl = new DriverControls { Brake = 0.5f };
+            for (int i = 0; i < 120; i++) h.Step(ctl);   // settle
+            float x0 = h.X;
+            for (int i = 0; i < 120 * 10; i++) h.Step(ctl);
+            float moved = Mathf.Abs(h.X - x0);
+            Debug.Log($"[MASAR test] braked on a {grade * 100f:F0} % grade: moved {moved * 100f:F2} cm in 10 s");
+            Assert.That(moved, Is.LessThan(0.01f));
+        }
+
+        [Test]
+        public void Released_OnSlope_RollsAway()
+        {
+            // Static friction must let go when the brake is released
+            var h = new Harness { Grade = 0.10f };
+            h.Sim.Drivetrain.SetSelector(GearSelector.Neutral, 0f);
+            for (int i = 0; i < 120; i++) h.Step(new DriverControls { Brake = 0.5f });
+            float x0 = h.X;
+            for (int i = 0; i < 120 * 3; i++) h.Step(new DriverControls());
+            Debug.Log($"[MASAR test] released on a 10 % grade: rolled {h.X - x0:F2} m in 3 s");
+            Assert.That(h.X - x0, Is.LessThan(-1f));
         }
 
         [Test]

@@ -21,13 +21,14 @@ namespace Masar.Game.UI
             UIKit.VStack(content, 14, new RectOffset(0, 12, 0, 16));
 
             Section(content, "What this build is");
-            Body(content, "A Month 2 alpha. Tahlia Street and Al Rawdah (4.4 × 2.6 km) built from real OpenStreetMap roads at real scale, " +
-                          "with flyovers, ramps and tunnels where the map has them. AI traffic obeys the signals and makes U-turns; " +
-                          "pedestrians walk the sidewalks. Selectable cars, six cameras and live performance metrics.");
+            Body(content, "A Month 3 alpha. Tahlia Street and Al Rawdah (4.4 × 2.6 km) built from real OpenStreetMap roads at real scale, " +
+                          "with flyovers, ramps and tunnels where the map has them. AI traffic obeys the signals, makes U-turns and changes lanes; " +
+                          "pedestrians walk the sidewalks. Day, sunset or night. Synthesised engine, tyre and wind sound. " +
+                          "Selectable cars, six cameras, live performance metrics and a self-driving benchmark (pause menu).");
             Section(content, "Not real yet");
             Body(content, "Only some buildings are surveyed in OpenStreetMap; the rest are generated to fill the plots. " +
                           "Bridge heights and ramp slopes use standard engineering values, not survey data. " +
-                          "Traffic doesn't change lanes. No damage, sound, driving school or Arabic interface yet. " +
+                          "The car sounds are synthesised, not recordings of the real cars. No damage, weather, driving school or Arabic interface yet. " +
                           "Imported cars are for private testing only.");
             Section(content, "Logitech G923");
             Body(content, "On the iPad through the wheel bridge (Windows PC on the same Wi-Fi), with force feedback.");

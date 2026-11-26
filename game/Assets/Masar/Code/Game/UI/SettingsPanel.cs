@@ -48,6 +48,17 @@ namespace Masar.Game.UI
                 () => s.showTouchControls ? 0 : 1,
                 i => { s.showTouchControls = i == 0; SettingsStore.Save(); });
 
+            // ---- sound
+            Section(content, "Sound");
+            UIKit.SliderRow(content, "Car sound volume (engine, tyres, wind)", 0f, 1f, s.soundVolume, v => (v * 100f).ToString("F0") + "%",
+                v => { s.soundVolume = v; SettingsStore.Save(); });
+
+            // ---- world
+            Section(content, "World");
+            UIKit.Segmented(content, "Time of day", new[] { "Day", "Sunset", "Night" },
+                () => s.timeOfDay,
+                i => { s.timeOfDay = i; SettingsStore.Save(); });
+
             // ---- city (generated maps)
             Section(content, "City");
             UIKit.Segmented(content, "AI traffic", new[] { "Off", "Light", "Normal", "Heavy" },

@@ -18,6 +18,10 @@ namespace Masar.Vehicles
         public float redlineRpm = 6500f;
         public float revLimiterRpm = 6700f;
         public float stallRpm = 450f;
+        [Tooltip("Cylinder count, for the engine sound (firing frequency = rpm x cylinders / 120 for a four-stroke).")]
+        public int cylinders = 4;
+        [Tooltip("Turbocharged: adds turbo whine and a blow-off sound to the engine audio.")]
+        public bool turbo = false;
         [Tooltip("Engine + flywheel rotational inertia (kg·m²).")]
         public float inertia = 0.18f;
         [Tooltip("Closed-throttle friction/pumping torque at redline (N·m). Scales with RPM.")]

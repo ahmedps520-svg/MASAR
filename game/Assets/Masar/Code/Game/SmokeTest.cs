@@ -185,11 +185,53 @@ namespace Masar.Game
             if (!string.IsNullOrEmpty(carArg)) tag += "_car-" + carArg;
             string mapArg = Arg("-masarMap");
             if (!string.IsNullOrEmpty(mapArg)) tag += "_map-" + mapArg;
+            string todArg = Arg("-masarTimeOfDay");
+            if (!string.IsNullOrEmpty(todArg)) tag += "_tod-" + todArg;
             var session = FindFirstObjectByType<DriveSession>();
             var car = session != null && session.vehicle != null ? session.vehicle : FindFirstObjectByType<VehicleController>();
             if (car == null) { Debug.LogError("[MASAR smoke] no vehicle found"); Application.Quit(2); yield break; }
             var driver = new ScriptedDriver();
             yield return new WaitForSeconds(1.5f);
+            // "-masarAutopilot": drive the lane graph (city maps) and add the benchmark numbers to the report
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-masarAutopilot") >= 0)
+            {
+                var bench = gameObject.AddComponent<DriveBenchmark>();
+                bench.Seconds = duration;
+                bool record = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-masarRecordAudio") >= 0;
+                var audio = car.GetComponent<VehicleAudio>();
+                if (record && audio != null) audio.Record = true;
+                float shotEvery = float.TryParse(Arg("-masarShotEvery"), NumberStyles.Float, CultureInfo.InvariantCulture, out var se) ? se : 0f;
+                if (bench.Begin(car, "smoke " + tag))
+                {
+                    float nextBenchLog = 0f, nextShot = shotEvery > 0f ? 4f : float.MaxValue;
+                    int shotN = 0;
+                    while (bench.Running)
+                    {
+                        if (bench.Elapsed >= nextShot)
+                        {
+                            ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"masar_smoke_{tag}_shot{shotN++:00}.png"));
+                            nextShot += shotEvery;
+                        }
+                        if (bench.Elapsed >= nextBenchLog)
+                        {
+                            Debug.Log($"[MASAR smoke] autopilot t={bench.Elapsed:F0}s {bench.Autopilot.State} lane error {bench.Autopilot.LateralError:F2} m");
+                            LogCar(car, $"t={bench.Elapsed:F0}");
+                            nextBenchLog += 10f;
+                        }
+                        yield return null;
+                    }
+                }
+                ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"masar_smoke_{tag}_autopilot.png"));
+                yield return new WaitForSeconds(0.5f);
+                File.WriteAllText(Path.Combine(dir, $"masar_smoke_{tag}_autopilot.txt"), bench.Report ?? "no report");
+                if (record && audio != null)
+                {
+                    int samples = audio.SaveRecording(Path.Combine(dir, $"masar_smoke_{tag}.wav"));
+                    Debug.Log($"[MASAR smoke] audio: {samples} samples at {audio.SampleRate} Hz recorded");
+                }
+                Application.Quit(0);
+                yield break;
+            }
             car.Input = driver;
             driver.Actions = new DriverActions { SelectDrive = true };
             yield return null;

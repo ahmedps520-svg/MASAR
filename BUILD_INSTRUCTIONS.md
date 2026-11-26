@@ -79,6 +79,8 @@ Adding another car means adding one `Spec` entry in `ImportedCarBuilder.cs`: nam
 | Full-stack drive test in the real scene (PlayMode) | `"E:/Unity/Editors/6000.3.28f1/Editor/Unity.exe" -batchmode -projectPath E:/MASAR/game -runTests -testPlatform PlayMode -testResults E:/MASAR/build/playtests.xml` |
 | Review screenshots at iPad resolution | `-executeMethod Masar.EditorTools.MasarScreenshots.CaptureAll -quality High`, written to `build/screenshots/` |
 | Player smoke test (unattended drive + perf report) | `build\windows\MASAR.exe -masarSmokeTest [-masarQuality High] [-masarUncapped] [-masarSmokeSeconds 12]`. The report is written to `%USERPROFILE%\AppData\LocalLow\MASAR Project\MASAR\` |
+| Benchmark drive on the city (lane autopilot, up to 80 km/h) | `build\windows\MASAR.exe -masarSmokeTest -masarViaMenu -masarAutopilot -masarMap Tahlia -masarQuality High -masarSmokeSeconds 180 [-masarTimeOfDay 0\|1\|2] [-masarShotEvery 30] [-masarRecordAudio]`. Writes `*_autopilot.txt` (frame times, frames over 50 ms, collisions, lane error, AI lane changes), screenshots and a WAV of the car's sound. On the iPad: pause menu > **Benchmark drive** |
+| Engine sound pitch against the logged rpm | `py -3 -I tools/audio_pitch_check.py <recording.wav> <player.log> <cylinders>` |
 | All graphics tiers, measured | `powershell -ExecutionPolicy Bypass -File tools\perf-tiers.ps1`, written to `build/perf/tiers.csv` |
 | UI layout capture at iPad aspect (menu, settings, devices, touch HUD, pause) | `build\windows\MASAR.exe -masarUiCapture -screen-width 1934 -screen-height 1333 -screen-fullscreen 0`, written to `ui_*.png` in the same LocalLow folder |
 
