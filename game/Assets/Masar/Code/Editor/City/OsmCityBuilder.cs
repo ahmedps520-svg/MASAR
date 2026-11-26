@@ -24,12 +24,12 @@ namespace Masar.EditorTools.City
         const string GenDir = "Assets/Masar/Generated/City";
         /// <summary>One additive scene per 512 m block with that block's buildings, streamed by CityLodManager.</summary>
         const string SectionDir = "Assets/Masar/Scenes/Tahlia";
-        const string GraphPath = "Assets/Masar/Data/Cities/TahliaGraph.asset";
+        public const string GraphPath = "Assets/Masar/Data/Cities/TahliaGraph.asset";
 
         // Tahlia from Al Rawdah east to Madinah Road and King Fahd Road (tools/osm/fetch-osm.ps1 -Name tahlia-madinah):
         // the Prince Saud Al Faisal and King Fahd Road flyovers, the sunken Madinah Road, Serafi Megamall
-        const string MapFile = "tahlia-madinah";
-        const double South = 21.5463, West = 39.1483, North = 21.5700, East = 39.1900;
+        public const string MapFile = "tahlia-madinah";
+        public const double South = 21.5463, West = 39.1483, North = 21.5700, East = 39.1900;
 
         /// <summary>Solves the road grades only and logs every structure (fast check, no scene).</summary>
         public static void ReportGrades()
@@ -110,10 +110,16 @@ namespace Masar.EditorTools.City
             var map = OsmMap.Load(json, South, West, North, East);
             var area = map.Bounds;
             var net = RoadNetwork.Build(map);
-            var surf = new RoadSurface(net, area);
+            // The new scene first: opening it unloads unsaved objects, and the lane graph is saved only at the end
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            // Lanes and junction connectors before the surfaces: the road must be asphalt wherever a car's path
+            // runs. Spawn: right lane of Tahlia Street. The walkways are added once the surfaces exist.
+            FindSpawn(net, area, out var spawnPos, out float spawnYaw);
+            var lg = new LaneGraphBuilder(net, area);
+            var graph = lg.Build(spawnPos, spawnYaw);
+            var surf = new RoadSurface(net, area, LaneGraphBuilder.GroundConnectors(graph));
             Debug.Log($"[MASAR] City: {map.Ways.Count} ways, {net.Roads.Count} roads, {net.Junctions.Count} junctions, grid {surf.Nx}x{surf.Nz} ({(System.DateTime.Now - t0).TotalSeconds:F0}s)");
 
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var m = CityMaterials.Create();
             var world = new GameObject("World").transform;
 
@@ -280,12 +286,8 @@ namespace Masar.EditorTools.City
             Debug.Log($"[MASAR] Buildings: {dress.Surveyed} surveyed (OSM; {dress.SurveyedKit} with the detailed kit, {dress.SurveyedTrimmed} pulled off the road, {dress.SurveyedDropped} left out: a road runs through them), {dress.Generated} generated ({dress.GeneratedVillas} villas), {dress.Modern} modern; " +
                       $"{dress.Lights} street lights, {dress.Palms.Count} palms; cells {dress.Cells.Count}, blocks {blocks.Count}, near {nearTris / 1000}k tris, mid {midTris / 1000}k, far {farTris / 1000}k");
 
-            // ---------------- spawn: right lane of Tahlia Street
-            FindSpawn(net, area, out var spawnPos, out float spawnYaw);
-
-            // ---------------- lane graph, signals
-            var lg = new LaneGraphBuilder(net, surf, area);
-            var graph = lg.Build(spawnPos, spawnYaw);
+            // ---------------- lane graph (built above), walkways, signals
+            lg.AddWalks(graph, surf);
             if (AssetDatabase.LoadAssetAtPath<CityGraph>(GraphPath) != null) AssetDatabase.DeleteAsset(GraphPath);
             AssetDatabase.CreateAsset(graph, GraphPath);
             int heads = BuildSignalHeads(world, m, net, graph);

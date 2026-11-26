@@ -88,6 +88,19 @@ namespace Masar.EditorTools
                 new View { Name = "21_campus_road_aerial", Pos = new Vector3(-1030f, 50f, -300f), LookAt = new Vector3(-979f, 0f, -250f), Fov = 55f },
                 new View { Name = "22_mosque_street_aerial", Pos = new Vector3(-780f, 45f, -510f), LookAt = new Vector3(-735f, 0f, -462f), Fov = 55f },
             };
+            // -masarLook "name@x,y,z@x,y,z;...": render only these views (camera position @ look-at point)
+            int li = System.Array.IndexOf(args, "-masarLook");
+            if (li >= 0 && li + 1 < args.Length)
+            {
+                var looks = new System.Collections.Generic.List<View>();
+                foreach (var spec in args[li + 1].Split(';'))
+                {
+                    var parts = spec.Split('@');
+                    if (parts.Length != 3) continue;
+                    looks.Add(new View { Name = parts[0], Pos = ParseVec(parts[1]), LookAt = ParseVec(parts[2]), Fov = 58f });
+                }
+                cityViews = looks.ToArray();
+            }
             if (city)
             {
                 // Line-up of every pedestrian prefab (bind pose) to check textures and heights
@@ -169,6 +182,13 @@ namespace Masar.EditorTools
             cam.targetTexture = null;
             Object.DestroyImmediate(rt);
             Object.DestroyImmediate(go);
+        }
+
+        static Vector3 ParseVec(string s)
+        {
+            var c = s.Split(',');
+            float F(int i) => float.Parse(c[i], System.Globalization.CultureInfo.InvariantCulture);
+            return new Vector3(F(0), F(1), F(2));
         }
     }
 }

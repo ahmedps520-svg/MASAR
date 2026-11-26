@@ -445,7 +445,7 @@ namespace Masar.EditorTools.City
                 int run = -1;
                 for (int j = 0; j <= k; j++)
                 {
-                    bool clear = j < k && _surf.Sample(_surf.R, Vector2.Lerp(a, b, (j + 0.5f) / k)) >= RoadClear;
+                    bool clear = j < k && Street(Vector2.Lerp(a, b, (j + 0.5f) / k)) >= StreetClear;
                     if (clear && run < 0) run = j;
                     if (clear || run < 0) continue;
                     Vector2 p0 = Vector2.Lerp(a, b, run / (float)k), p1 = Vector2.Lerp(a, b, j / (float)k);

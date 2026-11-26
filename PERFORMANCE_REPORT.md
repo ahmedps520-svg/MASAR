@@ -134,8 +134,9 @@ The car drives itself through Tahlia (up to 80 km/h, stops at red lights) while 
 | Night, test sedan (first lighting) | 117 | 59.8 | 16.67 / 16.96 / 22.08 ms | 70 ms | 4 | 1.27 km, 38 / 78 km/h | 0 | 1.90 m | 4 / 0 |
 | Sunset, test sedan | 57 | 60.0 | 16.67 / 16.86 / 20.27 ms | 24 ms | 0 | 0.53 km, 32 / 78 km/h | 0 | 0.19 m | 2 / 0 |
 | Day, Aventador SVJ | 57 | 59.9 | 16.67 / 17.35 / 18.84 ms | 66 ms | 1 | 0.74 km, 44 / 80 km/h | 0 | 0.15 m | 4 / 1 |
+| Day, test sedan, city with raised medians (C14, C15) | 177 | 59.9 | 16.67 / 16.69 / 17.00 ms | 47 ms | 0 | 1.87 km, 38 / 78 km/h | 0 | 1.90 m (no seconds off lane) | 6 / 0 |
 
-On the PC the streamed city holds the 60 fps cap with at most a handful of frames over 50 ms in 3 minutes (block loads). The iPad numbers come from the same drive: **pause menu > Benchmark drive** (the report is saved in Files > MASAR > benchmarks).
+On the PC the streamed city holds the 60 fps cap with at most a handful of frames over 50 ms in 3 minutes (block loads). The raised medians added kerbs (212,604 kerb segments, was 194,501) and 851 palms; peak Unity memory on that drive was 1,123 MB (1,060 MB before). The iPad numbers come from the same drive: **pause menu > Benchmark drive** (the report is saved in Files > MASAR > benchmarks).
 
 ### iPad Pro M5
 

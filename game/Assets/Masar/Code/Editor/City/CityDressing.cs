@@ -108,25 +108,30 @@ namespace Masar.EditorTools.City
 
         void MarkRect(Vector2 c, Vector2 ax, float w, float d) => _occ.FillRect(c, ax, w + 1f, d + 1f);
 
-        // ------------------------------------------------------------------ keeping buildings off the carriageway
+        // ------------------------------------------------------------------ keeping buildings off the street
         // OSM outlines and lots often reach a few metres into the modelled road width; a building there stood
-        // on a lane and stopped the car (58 boxes on lanes, 2026-11-24). R < 0 is the carriageway.
+        // on a lane and stopped the car (58 boxes on lanes, 2026-11-24). Kept off the carriageway only, they
+        // still stood on the sidewalk, and pedestrians walked through their walls (2.7 % of walking positions,
+        // owner report 2026-11-26). Like generated buildings (Fits), they now keep 0.4 m behind the sidewalk.
 
-        const float RoadClear = 0.5f;
+        const float StreetClear = 0.4f;
 
-        bool RectClear(Vector2 c, Vector2 ax, float w, float d, float clear = RoadClear)
+        /// <summary>Distance beyond the outer edge of the nearest sidewalk (negative on the sidewalk or the road).</summary>
+        float Street(Vector2 p) => _surf.Sample(_surf.S, p);
+
+        bool RectClear(Vector2 c, Vector2 ax, float w, float d, float clear = StreetClear)
         {
             Vector2 ay = new Vector2(-ax.y, ax.x);
             int nu = Mathf.Max(1, Mathf.CeilToInt(w / 1.5f)), nv = Mathf.Max(1, Mathf.CeilToInt(d / 1.5f));
             for (int i = 0; i <= nu; i++)
                 for (int j = 0; j <= nv; j++)
-                    if (_surf.Sample(_surf.R, c + ax * (w * (i / (float)nu - 0.5f)) + ay * (d * (j / (float)nv - 0.5f))) < clear) return false;
+                    if (Street(c + ax * (w * (i / (float)nu - 0.5f)) + ay * (d * (j / (float)nv - 0.5f))) < clear) return false;
             return true;
         }
 
         /// <summary>
-        /// Pulls each side of a rectangle (w along ax, d across) back off the carriageway. False when a road
-        /// runs through it or a side would drop below minSize.
+        /// Pulls each side of a rectangle (w along ax, d across) back off the street (road and sidewalk). False
+        /// when a road runs through it or a side would drop below minSize.
         /// </summary>
         bool PullOffRoad(ref Vector2 c, Vector2 ax, ref float w, ref float d, float minSize)
         {
@@ -140,22 +145,22 @@ namespace Masar.EditorTools.City
                     float half = s < 2 ? w * 0.5f : d * 0.5f, span = s < 2 ? d : w;
                     int k = Mathf.Max(1, Mathf.CeilToInt(span));
                     float worst = float.MaxValue;
-                    for (int i = 0; i <= k; i++) worst = Mathf.Min(worst, _surf.Sample(_surf.R, c + n * half + t * (span * (i / (float)k - 0.5f))));
-                    if (worst >= RoadClear) continue;
-                    float cut = RoadClear - worst + 0.05f;
+                    for (int i = 0; i <= k; i++) worst = Mathf.Min(worst, Street(c + n * half + t * (span * (i / (float)k - 0.5f))));
+                    if (worst >= StreetClear) continue;
+                    float cut = StreetClear - worst + 0.05f;
                     if (s < 2) w -= cut; else d -= cut;
                     c -= n * (cut * 0.5f);
                     moved = true;
                     if (w < minSize || d < minSize) return false;
                 }
-                if (!moved) return RectClear(c, ax, w, d, RoadClear - 0.1f);
+                if (!moved) return RectClear(c, ax, w, d, StreetClear - 0.1f);
             }
             return false;
         }
 
         /// <summary>
-        /// An outline with points on the carriageway: edges resampled every 2 m and pushed off along the
-        /// road distance gradient. Null when the result is not a simple polygon (a road through it).
+        /// An outline with points on the street (road or sidewalk): edges resampled every 2 m and pushed off
+        /// along the sidewalk-edge distance gradient. Null when the result is not a simple polygon (a road through it).
         /// </summary>
         List<Vector2> PushOffRoad(List<Vector2> poly)
         {
@@ -164,7 +169,7 @@ namespace Masar.EditorTools.City
             {
                 Vector2 a = poly[i], b = poly[(i + 1) % poly.Count];
                 int k = Mathf.Max(1, Mathf.CeilToInt((b - a).magnitude));
-                for (int j = 0; j <= k && !any; j++) any = _surf.Sample(_surf.R, Vector2.Lerp(a, b, j / (float)k)) < RoadClear;
+                for (int j = 0; j <= k && !any; j++) any = Street(Vector2.Lerp(a, b, j / (float)k)) < StreetClear;
             }
             if (!any) return poly;
             var dense = new List<Vector2>();
@@ -178,12 +183,12 @@ namespace Masar.EditorTools.City
                 for (int it = 0; it < 3; it++)
                 {
                     var p = dense[i];
-                    float r = _surf.Sample(_surf.R, p);
-                    if (r >= RoadClear) break;
-                    var g = new Vector2(_surf.Sample(_surf.R, p + Vector2.right * 0.5f) - _surf.Sample(_surf.R, p - Vector2.right * 0.5f),
-                                        _surf.Sample(_surf.R, p + Vector2.up * 0.5f) - _surf.Sample(_surf.R, p - Vector2.up * 0.5f));
+                    float r = Street(p);
+                    if (r >= StreetClear) break;
+                    var g = new Vector2(Street(p + Vector2.right * 0.5f) - Street(p - Vector2.right * 0.5f),
+                                        Street(p + Vector2.up * 0.5f) - Street(p - Vector2.up * 0.5f));
                     if (g.sqrMagnitude < 1e-6f) break;
-                    dense[i] = p + g.normalized * (RoadClear - r + 0.05f);
+                    dense[i] = p + g.normalized * (StreetClear - r + 0.05f);
                 }
             // Drop near-collinear and near-duplicate points so the roof triangulates cleanly
             var outp = new List<Vector2>();

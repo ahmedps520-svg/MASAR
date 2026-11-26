@@ -9,7 +9,8 @@ namespace Masar.EditorTools.City
     /// 1. Distance fields on a grid: R = distance to the nearest road edge (negative on the road),
     ///    S = distance to the nearest sidewalk outer edge.
     /// 2. Junction corners get real kerb radii from a morphological closing of the road region
-    ///    (Euclidean distance transform), applied only where it adds area.
+    ///    (Euclidean distance transform), applied only between two arms of the same junction, near it, and
+    ///    around junction connectors; the road is always paved under a connector.
     /// 3. Marching squares turns the fields into non-overlapping meshes: road (y = 0), sidewalk and
     ///    plot (raised to the kerb height), split into chunks for culling. Kerbs are built along the
     ///    simplified R = 0 contour: a vertical face and a top stone strip, painted black/yellow on
@@ -37,13 +38,23 @@ namespace Masar.EditorTools.City
         public float[] V;
 
         readonly RoadNetwork _net;
+        readonly Dictionary<int, HashSet<int>> _clusterArms;
+        /// <summary>Distance to the nearest ground-level junction connector, up to PathReach (1000 beyond).</summary>
+        readonly float[] _path;
+        /// <summary>Far enough that the sidewalk around a paved connector ends inside it (half width + widest sidewalk).</summary>
+        const float PathReach = 2f * CornerRadius;
+        /// <summary>Asphalt at least this far either side of a junction connector: a car's half width plus margin.</summary>
+        const float PathHalfWidth = 2f;
 
-        public RoadSurface(RoadNetwork net, Rect area)
+        /// <param name="connectors">The paths cars take through intersections (<see cref="LaneGraphBuilder.GroundConnectors"/>): always paved.</param>
+        public RoadSurface(RoadNetwork net, Rect area, IList<Vector2[]> connectors)
         {
             _net = net;
             Origin = area.min;
             Nx = Mathf.CeilToInt(area.width / Cell) + 1;
             Nz = Mathf.CeilToInt(area.height / Cell) + 1;
+            _clusterArms = ClusterArms();
+            _path = PathDistance(connectors);
             ComputeFields(null, out R, out S, out Cls, out _);
             ComputeFields((r, s) => !SegGraded(r, s), out Rg, out Sg, out _, out Rid);
             Footprints();
@@ -145,10 +156,14 @@ namespace Masar.EditorTools.City
             var sw = new float[n];
             cls = new byte[n];
             rid = new int[n];
-            for (int k = 0; k < n; k++) { d[k] = 1000f; dsw[k] = 1000f; rid[k] = -1; }
+            // The three nearest different roads per point: which roads a gap the closing would fill lies between
+            var d2 = new float[n]; var d3 = new float[n];
+            var rid2 = new int[n]; var rid3 = new int[n];
+            for (int k = 0; k < n; k++) { d[k] = d2[k] = d3[k] = 1000f; dsw[k] = 1000f; rid[k] = rid2[k] = rid3[k] = -1; }
             foreach (var r in _net.Roads)
             {
                 float reach = r.HalfWidth + r.Sidewalk + CornerRadius + 3f;
+                int ri = r.Index;
                 for (int s = 1; s < r.P.Count; s++)
                 {
                     if (include != null && !include(r, s)) continue;
@@ -160,32 +175,105 @@ namespace Masar.EditorTools.City
                             float dist = RoadNetwork.SegDist(GridPos(i, j), a, b, out _);
                             int k = j * Nx + i;
                             float v = dist - r.HalfWidth;
-                            if (v < d[k]) { d[k] = v; cls[k] = (byte)r.Class; sw[k] = r.Sidewalk; rid[k] = r.Index; }
+                            // Keep each road once, in order: slot 1 nearest
+                            if (ri == rid[k]) { if (v < d[k]) d[k] = v; }
+                            else if (ri == rid2[k]) { if (v < d2[k]) { d2[k] = v; if (v < d[k]) { (d[k], d2[k]) = (d2[k], d[k]); (rid[k], rid2[k]) = (rid2[k], rid[k]); } } }
+                            else if (v < d3[k])
+                            {
+                                d3[k] = v; rid3[k] = ri;   // replaces slot 3 (this road's own, or a further one)
+                                if (v < d2[k]) { (d2[k], d3[k]) = (d3[k], d2[k]); (rid2[k], rid3[k]) = (rid3[k], rid2[k]); }
+                                if (v < d[k]) { (d[k], d2[k]) = (d2[k], d[k]); (rid[k], rid2[k]) = (rid2[k], rid[k]); }
+                            }
                             float v2 = v - r.Sidewalk;
                             if (v2 < dsw[k]) dsw[k] = v2;
                         }
                 }
             }
+            for (int k = 0; k < n; k++)
+                if (rid[k] >= 0) { var r = _net.Roads[rid[k]]; cls[k] = (byte)r.Class; sw[k] = r.Sidewalk; }
 
-            // Closing of the road region by CornerRadius: dilate (d < r), then erode by the distance to the outside
+            // Closing of the road region by CornerRadius: dilate (d < r), then erode by the distance to the outside.
+            // It may only round the corners between arms of the same intersection, near it, with no other road
+            // within 11 m. Everywhere it also filled each gap under 11 m between two roads, so the median of a
+            // divided road became asphalt with no kerb and no lane (owner report, 2026-11-26). A gap one road
+            // makes with itself (the inside of a sharp bend, a small roundabout island) is still filled, and so
+            // is any gap a junction connector crosses: cars drive there (in big intersections, at U-turns).
             var outside = new bool[n];
             for (int k = 0; k < n; k++) outside[k] = d[k] >= CornerRadius;
             var edt = DistanceTransform(outside, Nx, Nz);
+            var corner = new bool[n];   // where the closing may fill (besides near a connector, below)
+            for (int k = 0; k < n; k++) corner[k] = d2[k] >= 2f * CornerRadius;
+            foreach (var jn in _net.Junctions.Values)
+            {
+                var arms = _clusterArms[jn.Cluster];
+                float reach = jn.Radius + CornerRadius;
+                Box(jn.P, jn.P, reach, out int i0, out int i1, out int j0, out int j1);
+                for (int j = j0; j <= j1; j++)
+                    for (int i = i0; i <= i1; i++)
+                    {
+                        int k = j * Nx + i;
+                        if (!corner[k] && arms.Contains(rid[k]) && arms.Contains(rid2[k]) && (d3[k] >= 2f * CornerRadius || arms.Contains(rid3[k]))
+                            && (GridPos(i, j) - jn.P).sqrMagnitude <= reach * reach) corner[k] = true;
+                    }
+            }
+            // Outside those places, and beyond CornerRadius from a connector, the fill fades out over a few metres
+            // (4 m per m of distance to them, so it ends within about 4 m even in a long median, where the closing
+            // reaches 16 m deep) instead of stopping at a grid cell: a per-cell cut left kerbs in 1.25 m steps.
+            // The connector distance is exact, so median openings follow the turning paths in smooth curves.
+            var fade = DistanceTransform(corner, Nx, Nz);
             R = new float[n];
             S = new float[n];
             for (int k = 0; k < n; k++)
             {
-                float closed = CornerRadius - edt[k] * Cell;
+                float away = Mathf.Min(fade[k] * Cell, Mathf.Max(0f, _path[k] - CornerRadius));
+                float closed = CornerRadius - edt[k] * Cell + 4f * away;
                 // The closing only adds area in concave corners; elsewhere keep the exact distance (bias hides grid error)
                 float rr = Mathf.Min(d[k], closed + 0.45f);
+                rr = Mathf.Min(rr, _path[k] - PathHalfWidth);   // paved under every connector, even across a wider island
                 R[k] = rr;
                 // Sidewalk outer edge: exact along roads; follows the rounded kerb only where the closing added road
                 S[k] = rr < d[k] - 0.05f ? Mathf.Min(dsw[k], rr - sw[k]) : dsw[k];
             }
         }
 
+        /// <summary>
+        /// The roads meeting at each intersection (all nodes of a divided-road intersection together). A kerb
+        /// corner is rounded within a junction's radius (widest arm + 2.5 m) plus the corner radius, which
+        /// covers the rounded corner of two arms meeting at a right angle.
+        /// </summary>
+        Dictionary<int, HashSet<int>> ClusterArms()
+        {
+            var arms = new Dictionary<int, HashSet<int>>();
+            foreach (var j in _net.Junctions.Values)
+            {
+                if (!arms.TryGetValue(j.Cluster, out var set)) arms[j.Cluster] = set = new HashSet<int>();
+                foreach (var (road, _) in j.Arms) set.Add(road.Index);
+            }
+            return arms;
+        }
+
+        float[] PathDistance(IList<Vector2[]> paths)
+        {
+            var dist = new float[Nx * Nz];
+            for (int k = 0; k < dist.Length; k++) dist[k] = 1000f;
+            foreach (var p in paths)
+                for (int s = 1; s < p.Length; s++)
+                {
+                    Vector2 a = p[s - 1], b = p[s];
+                    Box(a, b, PathReach, out int i0, out int i1, out int j0, out int j1);
+                    for (int j = j0; j <= j1; j++)
+                        for (int i = i0; i <= i1; i++)
+                        {
+                            float v = RoadNetwork.SegDist(GridPos(i, j), a, b, out _);
+                            int k = j * Nx + i;
+                            if (v <= PathReach && v < dist[k]) dist[k] = v;
+                        }
+                }
+            return dist;
+        }
+
         /// <summary>Exact Euclidean distance transform (Felzenszwalb-Huttenlocher), in cells, to the nearest seed.</summary>
-        static float[] DistanceTransform(bool[] seed, int nx, int nz)
+        internal static float[] DistanceTransform(bool[] seed, int nx, int nz)
         {
             const float Inf = 1e12f;
             var g = new float[nx * nz];

@@ -32,7 +32,6 @@ namespace Masar.EditorTools.City
         }
 
         readonly RoadNetwork _net;
-        readonly RoadSurface _surf;
         readonly Rect _area;
         readonly List<LaneTmp> _lanes = new List<LaneTmp>();
         readonly List<RoadNetwork.Junction> _junctionList = new List<RoadNetwork.Junction>();
@@ -44,7 +43,30 @@ namespace Masar.EditorTools.City
         bool SameCluster(long a, long b) => _net.Junctions.TryGetValue(a, out var ja) && _net.Junctions.TryGetValue(b, out var jb) && ja.Cluster == jb.Cluster && _clusterSize[ja.Cluster] > 1;
         public int Connectors, RoadLanes, Signals, UTurns;
 
-        public LaneGraphBuilder(RoadNetwork net, RoadSurface surf, Rect area) { _net = net; _surf = surf; _area = area; }
+        public LaneGraphBuilder(RoadNetwork net, Rect area) { _net = net; _area = area; }
+
+        /// <summary>
+        /// The junction connectors at ground level (the paths cars take through intersections, U-turns
+        /// included), as x/z polylines: the road surface is paved under them.
+        /// </summary>
+        public static List<Vector2[]> GroundConnectors(CityGraph g)
+        {
+            var paths = new List<Vector2[]>();
+            foreach (var l in g.lanes)
+            {
+                if (l.junction < 0) continue;
+                var p = new Vector2[l.pointCount];
+                bool ground = true;
+                for (int i = 0; i < l.pointCount; i++)
+                {
+                    var q = g.points[l.pointStart + i];
+                    ground &= Mathf.Abs(q.y) <= 0.05f;   // ground level (heights within GroundTol, decks lifted 2 cm)
+                    p[i] = new Vector2(q.x, q.z);
+                }
+                if (ground) paths.Add(p);
+            }
+            return paths;
+        }
 
         public CityGraph Build(Vector3 spawn, float spawnYaw)
         {
@@ -88,7 +110,6 @@ namespace Masar.EditorTools.City
                 if (j.Signal) Signals++;
             }
             g.junctions = js;
-            BuildWalks(g);
             g.spawnPosition = spawn; g.spawnYaw = spawnYaw;
             return g;
         }
@@ -350,7 +371,8 @@ namespace Masar.EditorTools.City
 
         // ------------------------------------------------------------------ walkways
 
-        void BuildWalks(CityGraph g)
+        /// <summary>Pedestrian walkways along the sidewalks, once the road surfaces exist.</summary>
+        public void AddWalks(CityGraph g, RoadSurface surf)
         {
             var pts = new List<Vector3>(); var walks = new List<CityGraph.Walk>();
             foreach (var road in _net.Roads)
@@ -371,10 +393,17 @@ namespace Masar.EditorTools.City
                         }
                         run = new List<Vector2>();
                     }
-                    foreach (var p in dense)
+                    for (int i = 0; i < dense.Count; i++)
                     {
-                        bool ok = _area.Contains(p) && _surf.Sample(_surf.Rg, p) > 0.8f && _surf.Sample(_surf.Sg, p) < -0.3f
-                                  && _surf.Sample(_surf.E, p) > 1f && _surf.VoidField(_surf.Index(p)) < 0f;
+                        var p = dense[i];
+                        // Not along a median: another carriageway close behind the sidewalk (outward = this side)
+                        Vector2 t = dense[Mathf.Min(i + 1, dense.Count - 1)] - dense[Mathf.Max(i - 1, 0)];
+                        Vector2 outward = t.sqrMagnitude > 1e-6f ? new Vector2(t.y, -t.x).normalized * side : Vector2.zero;
+                        bool median = false;
+                        for (float k = 1f; k <= 8f && !median && outward != Vector2.zero; k += 1f)
+                            median = surf.Sample(surf.Rg, p + outward * (road.Sidewalk * 0.5f + k)) < 0f;
+                        bool ok = !median && _area.Contains(p) && surf.Sample(surf.Rg, p) > 0.8f && surf.Sample(surf.Sg, p) < -0.3f
+                                  && surf.Sample(surf.E, p) > 1f && surf.VoidField(surf.Index(p)) < 0f;
                         if (ok) run.Add(p); else Flush();
                     }
                     Flush();
